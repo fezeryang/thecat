@@ -28,7 +28,9 @@
   --color-ring: var(--ring);
 
   /* Campus Felines custom tokens */
-  --font-display: 'Syne', sans-serif;
+  --font-display: 'Inter', sans-serif;
+  --font-body: 'Inter', 'Noto Sans SC', sans-serif;
+  --font-mono: 'Space Mono', monospace;
   --font-body: 'Space Grotesk', 'Noto Sans SC', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --font-cn: 'Noto Sans SC', sans-serif;
