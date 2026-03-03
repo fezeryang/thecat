@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雪球 | 月光巡逻队</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;900&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f0f4ff;
+            --accent: #4a90d9;
+            --accent-light: #b8d4f0;
+            --accent-pale: #deeeff;
+            --text: #1a2540;
+            --glass: rgba(255, 255, 255, 0.55);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: radial-gradient(ellipse at 30% 20%, #e8f0ff 0%, #f0f4ff 40%, #e4eeff 100%);
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            overflow: hidden;
+            color: var(--text);
+            height: 100vh;
+        }
+
+        /* SVG Noise Filter */
+        .noise-svg { position: absolute; width: 0; height: 0; }
+
+        /* Moonlight frame lines */
+        .frame-line {
+            position: fixed;
+            background: rgba(74, 144, 217, 0.06);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .v-line { width: 1px; height: 100vh; top: 0; }
+        .h-line { height: 1px; width: 100vw; left: 0; }
+
+        /* p5 canvas */
+        #p5-canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+
+        /* Main stage layout */
+        .stage {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: 4rem 5rem;
+            pointer-events: none;
+        }
+
+        /* Left metadata */
+        .metadata {
+            z-index: 10;
+        }
+
+        .metadata h1 {
+            font-size: 5.5rem;
+            font-weight: 900;
+            line-height: 0.82;
+            letter-spacing: -0.04em;
+            text-transform: uppercase;
+            color: var(--text);
+            margin-bottom: 1.5rem;
+        }
+
+        .metadata .cn-name {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            margin-bottom: 1.5rem;
+        }
+
+        .data-point {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-top: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0.65;
+        }
+
+        .data-point::before {
+            content: '';
+            width: 28px;
+            height: 1px;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+
+        /* Eyes container */
+        .eyes-stage {
+            position: relative;
+            width: 480px;
+            height: 480px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1200px;
+            pointer-events: auto;
+        }
+
+        .face-glow {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.9) 0%, rgba(224, 236, 255, 0.6) 50%, transparent 75%);
+            border-radius: 50%;
+            filter: blur(35px);
+        }
+
+        .eyes-wrapper {
+            position: relative;
+            display: flex;
+            gap: 70px;
+            z-index: 5;
+            transform-style: preserve-3d;
+            transition: transform 0.15s ease-out;
+        }
+
+        .eye {
+            position: relative;
+            width: 130px;
+            height: 100px;
+            background: #0a0a1a;
+            border-radius: 50% 50% 45% 45% / 70% 70% 40% 40%;
+            overflow: hidden;
+            box-shadow:
+                0 0 0 7px #f8fbff,
+                0 0 0 8px rgba(74, 144, 217, 0.3),
+                0 18px 45px rgba(74, 144, 217, 0.15);
+            cursor: none;
+        }
+
+        .iris {
+            position: absolute;
+            top: -12%; left: -12%;
+            width: 124%; height: 124%;
+            background:
+                radial-gradient(circle at center, #060612 18%, transparent 42%),
+                radial-gradient(circle at center, #4a90d9 0%, #2060a0 45%, #0a2040 100%);
+            filter: url(#aqueous-refraction);
+            transition: transform 0.08s ease-out;
+        }
+
+        .pupil {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 16px;
+            height: 70px;
+            background: #04040c;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 12px rgba(0,0,0,0.9);
+            transition: height 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .cornea {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 55%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .highlight {
+            position: absolute;
+            top: 18%; left: 22%;
+            width: 28px; height: 32px;
+            background: white;
+            border-radius: 40% 60% 70% 30% / 50%;
+            filter: blur(1px);
+            opacity: 0.85;
+            box-shadow: 0 0 18px rgba(255,255,255,0.6);
+        }
+
+        .highlight-2 {
+            position: absolute;
+            bottom: 22%; right: 22%;
+            width: 9px; height: 9px;
+            background: rgba(180, 220, 255, 0.7);
+            border-radius: 50%;
+        }
+
+        /* Moon reflection in eye */
+        .moon-reflect {
+            position: absolute;
+            top: 25%; left: 50%;
+            transform: translateX(-50%);
+            width: 20px; height: 20px;
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(200,230,255,0.3) 100%);
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+
+        /* Cat nose */
+        .cat-nose {
+            position: absolute;
+            bottom: 28%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 28px;
+            height: 14px;
+            background: #e8c0cc;
+            clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+            filter: blur(2px);
+            opacity: 0.5;
+            z-index: 4;
+        }
+
+        /* Right info panel */
+        .right-panel {
+            text-align: right;
+            z-index: 10;
+        }
+
+        .right-panel .bio {
+            max-width: 280px;
+            margin-left: auto;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(74, 144, 217, 0.2);
+            border-radius: 18px;
+            padding: 22px;
+            margin-bottom: 20px;
+            pointer-events: auto;
+        }
+
+        .right-panel .bio h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .right-panel .bio p {
+            font-size: 0.85rem;
+            line-height: 1.65;
+            opacity: 0.75;
+        }
+
+        .tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+
+        .tag {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            padding: 3px 10px;
+            background: var(--accent-pale);
+            border-radius: 20px;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* Scan line effect */
+        .scan-line {
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(74, 144, 217, 0.015) 2px,
+                rgba(74, 144, 217, 0.015) 4px
+            );
+            pointer-events: none;
+            z-index: 900;
+        }
+
+        /* Back button */
+        .back-btn {
+            position: fixed;
+            top: 36px;
+            right: 50px;
+            z-index: 200;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 10px 20px;
+            border: 2px solid var(--text);
+            border-radius: 50px;
+            background: white;
+            color: var(--text);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+        .back-btn:hover { background: var(--text); color: white; }
+
+        /* Floating moon particles */
+        .moon-particle {
+            position: fixed;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(200,220,255,0.8) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: float-moon linear infinite;
+        }
+
+        @keyframes float-moon {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 0.5; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        /* UI decoration */
+        .ui-deco {
+            position: fixed;
+            bottom: 40px;
+            left: 50px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            opacity: 0.35;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+
+    <svg class="noise-svg">
+        <filter id="aqueous-refraction">
+            <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="4" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+    </svg>
+
+    <!-- Frame lines -->
+    <div class="frame-line v-line" style="left: 14%;"></div>
+    <div class="frame-line v-line" style="right: 14%;"></div>
+    <div class="frame-line h-line" style="top: 18%;"></div>
+    <div class="frame-line h-line" style="bottom: 18%;"></div>
+
+    <div class="scan-line"></div>
+
+    <!-- Moon particles -->
+    <div class="moon-particle" style="width:60px;height:60px;left:8%;animation-duration:12s;animation-delay:0s;"></div>
+    <div class="moon-particle" style="width:30px;height:30px;left:25%;animation-duration:18s;animation-delay:3s;"></div>
+    <div class="moon-particle" style="width:45px;height:45px;left:75%;animation-duration:15s;animation-delay:6s;"></div>
+    <div class="moon-particle" style="width:20px;height:20px;left:90%;animation-duration:20s;animation-delay:1s;"></div>
+
+    <div id="p5-canvas-container"></div>
+
+    <a class="back-btn" href="index.html">← 返回</a>
+
+    <main class="stage">
+        <div class="metadata">
+            <h1>XUEQIU</h1>
+            <div class="cn-name">雪 球</div>
+            <div class="data-point">品种：英国短毛猫</div>
+            <div class="data-point">折射率：1.336 nD</div>
+            <div class="data-point">夜视能力：极强</div>
+            <div class="data-point">据点：校园小径</div>
+            <div class="data-point">状态：月光巡逻中</div>
+        </div>
+
+        <div class="eyes-stage" id="eyes-stage">
+            <div class="face-glow"></div>
+            <div class="cat-nose"></div>
+
+            <div class="eyes-wrapper" id="eyes-wrapper">
+                <div class="eye">
+                    <div class="iris" id="iris-l"></div>
+                    <div class="pupil" id="pupil-l"></div>
+                    <div class="moon-reflect"></div>
+                    <div class="cornea"></div>
+                    <div class="highlight"></div>
+                    <div class="highlight-2"></div>
+                </div>
+
+                <div class="eye">
+                    <div class="iris" id="iris-r"></div>
+                    <div class="pupil" id="pupil-r"></div>
+                    <div class="moon-reflect"></div>
+                    <div class="cornea"></div>
+                    <div class="highlight"></div>
+                    <div class="highlight-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="bio">
+                <h3>档案描述</h3>
+                <p>雪球是校园夜晚的守护者，纯白的毛发在月光下如同流动的银河。它的眼睛能捕捉最微弱的光线，折射出深邃的蓝色光芒。</p>
+                <div class="tags">
+                    <span class="tag">夜行者</span>
+                    <span class="tag">纯白</span>
+                    <span class="tag">月光系</span>
+                    <span class="tag">神秘</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="ui-deco">
+        档案编号: #002<br>
+        扫描精度: 99.8%<br>
+        折射映射: 完成<br>
+        光捕获: 已激活
+    </div>
+
+    <script>
+        const eyesWrapper = document.getElementById('eyes-wrapper');
+        const pupils = document.querySelectorAll('.pupil');
+        const irises = document.querySelectorAll('.iris');
+        const eyes = document.querySelectorAll('.eye');
+        let blinkInterval;
+
+        // Eye tracking
+        document.body.addEventListener('mousemove', (e) => {
+            const { clientX, clientY } = e;
+            const { innerWidth, innerHeight } = window;
+
+            const moveX = (clientX - innerWidth / 2) / (innerWidth / 2);
+            const moveY = (clientY - innerHeight / 2) / (innerHeight / 2);
+
+            eyesWrapper.style.transform = `rotateY(${moveX * 12}deg) rotateX(${-moveY * 12}deg)`;
+
+            irises.forEach(iris => {
+                iris.style.transform = `translate(${moveX * 18}px, ${moveY * 18}px)`;
+            });
+
+            pupils.forEach(pupil => {
+                const distance = Math.sqrt(moveX ** 2 + moveY ** 2);
+                const pHeight = 70 - (distance * 38);
+                pupil.style.height = `${Math.max(8, pHeight)}px`;
+                pupil.style.transform = `translate(calc(-50% + ${moveX * 28}px), calc(-50% + ${moveY * 22}px))`;
+            });
+        });
+
+        // Blink
+        document.body.addEventListener('mousedown', () => {
+            eyes.forEach(eye => {
+                eye.style.height = '2px';
+                eye.style.transition = 'height 0.06s ease-out';
+            });
+        });
+        document.body.addEventListener('mouseup', () => {
+            eyes.forEach(eye => {
+                eye.style.height = '100px';
+                eye.style.transition = 'height 0.18s ease-in';
+            });
+        });
+
+        // Auto blink
+        function autoBlink() {
+            eyes.forEach(eye => {
+                eye.style.height = '2px';
+                eye.style.transition = 'height 0.06s ease-out';
+            });
+            setTimeout(() => {
+                eyes.forEach(eye => {
+                    eye.style.height = '100px';
+                    eye.style.transition = 'height 0.18s ease-in';
+                });
+            }, 120);
+        }
+        setInterval(autoBlink, random(3000, 6000));
+        function random(a, b) { return Math.random() * (b - a) + a; }
+
+        // p5.js - Moonlight particle system
+        function setup() {
+            const canvas = createCanvas(windowWidth, windowHeight);
+            canvas.parent('p5-canvas-container');
+        }
+
+        let moonParticles = [];
+
+        function draw() {
+            clear();
+
+            // Add new moon particles
+            if (frameCount % 4 === 0) {
+                moonParticles.push({
+                    x: random(0, width),
+                    y: height + 20,
+                    size: random(3, 12),
+                    speed: random(0.5, 2),
+                    opacity: random(100, 200),
+                    drift: random(-0.5, 0.5),
+                    twinkle: random(0, TWO_PI)
+                });
+            }
+
+            // Draw moon particles
+            for (let i = moonParticles.length - 1; i >= 0; i--) {
+                let p = moonParticles[i];
+                p.y -= p.speed;
+                p.x += p.drift;
+                p.twinkle += 0.05;
+                let alpha = p.opacity * sin(p.twinkle) * 0.5 + p.opacity * 0.5;
+
+                noStroke();
+                fill(180, 210, 255, alpha * 0.6);
+                circle(p.x, p.y, p.size * 2.5);
+                fill(220, 235, 255, alpha);
+                circle(p.x, p.y, p.size);
+
+                if (p.y < -20) moonParticles.splice(i, 1);
+            }
+
+            // Draw constellation lines
+            stroke(74, 144, 217, 15);
+            strokeWeight(0.5);
+            for (let i = 0; i < moonParticles.length; i++) {
+                for (let j = i + 1; j < moonParticles.length; j++) {
+                    let d = dist(moonParticles[i].x, moonParticles[i].y, moonParticles[j].x, moonParticles[j].y);
+                    if (d < 120) {
+                        line(moonParticles[i].x, moonParticles[i].y, moonParticles[j].x, moonParticles[j].y);
+                    }
+                }
+            }
+
+            // Limit particles
+            if (moonParticles.length > 80) moonParticles.splice(0, 1);
+
+            // Draw subtle moon in background
+            let t = millis() * 0.0003;
+            let moonX = width * 0.75 + sin(t) * 20;
+            let moonY = height * 0.15 + cos(t * 0.7) * 15;
+
+            noStroke();
+            fill(200, 225, 255, 30);
+            circle(moonX, moonY, 180);
+            fill(210, 230, 255, 20);
+            circle(moonX, moonY, 220);
+            fill(220, 235, 255, 40);
+            circle(moonX, moonY, 120);
+            fill(235, 245, 255, 60);
+            circle(moonX, moonY, 70);
+            fill(255, 255, 255, 80);
+            circle(moonX, moonY, 40);
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>

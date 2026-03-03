@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>花花 | 活版印刷师</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;700;800&family=Noto+Sans+SC:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #fdf9ee;
+            --ink: #2a2a2a;
+            --ink-green: #3d9a5c;
+            --ink-orange: #e8622a;
+            --ink-yellow: #f5c842;
+            --ink-pink: #e85a8a;
+            --border: 2.5px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--paper);
+            color: var(--ink);
+            font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+            overflow-x: hidden;
+            min-height: 400vh;
+        }
+
+        /* Risograph grain */
+        .grain-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.12;
+            mix-blend-mode: multiply;
+        }
+
+        #p5-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+        }
+
+        /* Riso window style */
+        .riso-window {
+            background: var(--paper);
+            border: var(--border) solid var(--ink);
+            box-shadow: 7px 7px 0px var(--ink);
+            position: absolute;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            mix-blend-mode: multiply;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+        }
+
+        .riso-window:hover {
+            transform: scale(1.025) rotate(-0.8deg);
+            box-shadow: 10px 10px 0px var(--ink);
+        }
+
+        .title-bar {
+            background: var(--ink);
+            padding: 9px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--paper);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 7px;
+        }
+
+        .ctrl {
+            width: 13px;
+            height: 13px;
+            border: 1.5px solid var(--paper);
+        }
+
+        .ctrl-close { background: var(--ink-pink); }
+        .ctrl-min { background: var(--ink-yellow); }
+        .ctrl-max { background: var(--ink-green); }
+
+        .window-content {
+            padding: 22px;
+            flex-grow: 1;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Window positions */
+        #win-hero { width: 380px; left: 8%; top: 80px; z-index: 10; }
+        #win-portrait { width: 320px; right: 6%; top: 120px; z-index: 8; }
+        #win-story { width: 440px; left: 14%; top: 680px; z-index: 9; }
+        #win-stats { width: 300px; right: 10%; top: 750px; z-index: 7; }
+        #win-gallery { width: 500px; left: 25%; top: 1400px; z-index: 8; }
+        #win-fact { width: 360px; left: 8%; top: 2100px; z-index: 6; }
+        #win-map { width: 420px; right: 8%; top: 2200px; z-index: 7; }
+
+        h1 {
+            font-size: 3rem;
+            line-height: 1;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        p { font-size: 0.88rem; line-height: 1.6; margin-bottom: 14px; }
+
+        .riso-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            font-size: 0.65rem;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            mix-blend-mode: multiply;
+        }
+
+        .tag-green { background: var(--ink-green); color: var(--paper); }
+        .tag-orange { background: var(--ink-orange); color: var(--paper); }
+        .tag-yellow { background: var(--ink-yellow); color: var(--ink); }
+        .tag-pink { background: var(--ink-pink); color: var(--paper); }
+
+        /* Portrait area */
+        .portrait-area {
+            width: 100%;
+            height: 220px;
+            background: var(--ink-yellow);
+            border: 2px solid var(--ink);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            mix-blend-mode: multiply;
+        }
+
+        .portrait-area .cat-emoji {
+            font-size: 5rem;
+            filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.3));
+        }
+
+        .portrait-area .riso-layer {
+            position: absolute;
+            inset: 0;
+            background: var(--ink-pink);
+            opacity: 0.25;
+            mix-blend-mode: multiply;
+        }
+
+        /* Stats table */
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+
+        .stats-table td {
+            padding: 6px 8px;
+            border: 1px solid var(--ink);
+        }
+
+        .stats-table td:first-child {
+            background: var(--ink);
+            color: var(--paper);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            letter-spacing: 0.06em;
+            width: 40%;
+        }
+
+        /* Gallery grid */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            border: 2px solid var(--ink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            mix-blend-mode: multiply;
+            transition: transform 0.2s ease;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.05) rotate(2deg);
+        }
+
+        /* Riso button */
+        .riso-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: var(--ink);
+            color: var(--paper);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border: none;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 var(--ink-green);
+            transition: all 0.15s ease;
+        }
+
+        .riso-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0 var(--ink-green);
+        }
+
+        .riso-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 var(--ink-green);
+        }
+
+        /* Scroll hint */
+        .scroll-hint {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            writing-mode: vertical-rl;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            animation: bounce 2.5s ease-in-out infinite;
+            z-index: 100;
+            opacity: 0.5;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(12px); }
+        }
+
+        /* Back button */
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 200;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 10px 18px;
+            background: var(--ink);
+            color: var(--paper);
+            text-decoration: none;
+            box-shadow: 4px 4px 0 var(--ink-green);
+            transition: all 0.15s ease;
+        }
+
+        .back-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0 var(--ink-green);
+        }
+
+        /* Decorative cross marks */
+        .cross-mark {
+            position: fixed;
+            font-size: 1.2rem;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Cat facts */
+        .fact-card {
+            background: var(--ink-yellow);
+            border: 2px solid var(--ink);
+            padding: 16px;
+            margin-bottom: 14px;
+            mix-blend-mode: multiply;
+        }
+
+        .fact-card h3 {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Map area */
+        .map-area {
+            width: 100%;
+            height: 200px;
+            background: var(--ink-green);
+            border: 2px solid var(--ink);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--paper);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            mix-blend-mode: multiply;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-dot {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: var(--ink-pink);
+            border: 2px solid var(--ink);
+            border-radius: 50%;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.4); }
+        }
+    </style>
+</head>
+<body>
+
+    <svg style="display:none;">
+        <filter id="grain-filter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+            <feColorMatrix type="saturate" values="0" />
+            <feComponentTransfer>
+                <feFuncA type="linear" slope="0.18" />
+            </feComponentTransfer>
+            <feComposite operator="in" in2="SourceGraphic" />
+        </filter>
+    </svg>
+
+    <div class="grain-overlay">
+        <svg width="100%" height="100%">
+            <rect width="100%" height="100%" filter="url(#grain-filter)" fill="transparent" />
+        </svg>
+    </div>
+
+    <!-- Cross marks -->
+    <div class="cross-mark" style="top:10%;left:5%;">+</div>
+    <div class="cross-mark" style="top:30%;right:4%;">+</div>
+    <div class="cross-mark" style="top:60%;left:3%;">+</div>
+    <div class="cross-mark" style="bottom:20%;right:5%;">+</div>
+
+    <div id="p5-canvas"></div>
+
+    <a class="back-btn" href="index.html">← 返回</a>
+
+    <div class="scroll-hint">SCROLL TO BLOOM ↓</div>
+
+    <div style="position:relative;min-height:400vh;padding:20px;">
+
+        <!-- Window 1: Hero -->
+        <div class="riso-window" id="win-hero">
+            <div class="title-bar">
+                <span>HUAHUA_PROFILE.RISO</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-max"></div>
+                    <div class="ctrl ctrl-min"></div>
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <h1 style="color:var(--ink-green);">花花<br>HUA HUA</h1>
+                <p>三花猫 · 活版印刷师 · 校园艺术家</p>
+                <div>
+                    <span class="riso-tag tag-green">三花猫</span>
+                    <span class="riso-tag tag-orange">艺术家</span>
+                    <span class="riso-tag tag-yellow">活泼</span>
+                    <span class="riso-tag tag-pink">档案 #006</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window 2: Portrait -->
+        <div class="riso-window" id="win-portrait">
+            <div class="title-bar">
+                <span>PORTRAIT.INK</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-min"></div>
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content" style="padding:14px;">
+                <div class="portrait-area">
+                    <div class="cat-emoji">🐱</div>
+                    <div class="riso-layer"></div>
+                </div>
+                <p style="font-size:0.75rem;text-align:center;opacity:0.6;margin:0;">
+                    花花 · 三花猫 · 校园艺术区常客
+                </p>
+            </div>
+        </div>
+
+        <!-- Window 3: Story -->
+        <div class="riso-window" id="win-story">
+            <div class="title-bar">
+                <span>CAT_STORY.TXT</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-close"></div>
+                    <div class="ctrl ctrl-min"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <h1 style="font-size:2rem;color:var(--ink-orange);">活版印刷<br>的灵魂</h1>
+                <p>花花是校园里最具艺术气质的三花猫，它的三色花纹就像活版印刷的墨迹，每一块颜色都恰到好处地叠印在一起，形成独一无二的图案。</p>
+                <p>它最喜欢在艺术楼附近游荡，偶尔会用爪子在地上留下"印章"，被同学们称为"活版印刷师"。</p>
+                <button class="riso-btn" onclick="this.textContent = this.textContent === '了解更多' ? '花花: 喵！' : '了解更多'">了解更多</button>
+            </div>
+        </div>
+
+        <!-- Window 4: Stats -->
+        <div class="riso-window" id="win-stats">
+            <div class="title-bar">
+                <span>VITAL_STATS.DAT</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <table class="stats-table">
+                    <tr><td>品种</td><td>三花猫</td></tr>
+                    <tr><td>毛色</td><td>黑白橘三色</td></tr>
+                    <tr><td>性格</td><td>活泼好奇</td></tr>
+                    <tr><td>据点</td><td>艺术楼</td></tr>
+                    <tr><td>特长</td><td>留下爪印</td></tr>
+                    <tr><td>状态</td><td>创作中</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Window 5: Gallery -->
+        <div class="riso-window" id="win-gallery">
+            <div class="title-bar">
+                <span>GALLERY_PRINTS.RISO</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-max"></div>
+                    <div class="ctrl ctrl-min"></div>
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <p style="margin-bottom:14px;">花花的爪印艺术作品集 — 每一幅都是独一无二的活版印刷</p>
+                <div class="gallery-grid">
+                    <div class="gallery-item" style="background:rgba(61,154,92,0.3);">🐾</div>
+                    <div class="gallery-item" style="background:rgba(232,98,42,0.3);">🌸</div>
+                    <div class="gallery-item" style="background:rgba(245,200,66,0.4);">⭐</div>
+                    <div class="gallery-item" style="background:rgba(232,90,138,0.3);">🎨</div>
+                    <div class="gallery-item" style="background:rgba(61,154,92,0.2);">🍃</div>
+                    <div class="gallery-item" style="background:rgba(232,98,42,0.2);">🔴</div>
+                    <div class="gallery-item" style="background:rgba(245,200,66,0.3);">🌼</div>
+                    <div class="gallery-item" style="background:rgba(232,90,138,0.2);">💮</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window 6: Fun Fact -->
+        <div class="riso-window" id="win-fact">
+            <div class="title-bar">
+                <span>CAT_WISDOM.INK</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="fact-card">
+                    <h3>你知道吗？</h3>
+                    <p id="cat-fact" style="margin:0;font-size:0.85rem;">"三花猫几乎全部是雌性，这是由X染色体上的基因决定的。"</p>
+                </div>
+                <button class="riso-btn" onclick="changeFact()" style="background:var(--ink-green);box-shadow:4px 4px 0 var(--ink);">换一条知识</button>
+            </div>
+        </div>
+
+        <!-- Window 7: Map -->
+        <div class="riso-window" id="win-map">
+            <div class="title-bar">
+                <span>CAMPUS_MAP.LOCATE</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-min"></div>
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <p style="margin-bottom:12px;">花花的活动轨迹 — 艺术楼周边</p>
+                <div class="map-area">
+                    <div class="map-dot" style="top:40%;left:45%;"></div>
+                    <span style="position:absolute;bottom:10px;right:10px;font-size:0.6rem;opacity:0.7;">艺术楼 · 实时定位</span>
+                </div>
+                <p style="font-size:0.75rem;opacity:0.6;margin:0;">最后目击: 艺术楼一楼走廊 · 正在晒太阳</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const facts = [
+            '"三花猫几乎全部是雌性，这是由X染色体上的基因决定的。"',
+            '"猫咪每天睡眠时间高达16小时，是真正的睡眠大师。"',
+            '"猫的爪印就像人类的指纹，每只猫都是独一无二的。"',
+            '"三花猫在日本被视为幸运的象征，常见于招财猫的原型。"',
+            '"猫咪发出呼噜声的频率在25-50赫兹之间，有助于骨骼愈合。"'
+        ];
+        let factIndex = 0;
+
+        function changeFact() {
+            factIndex = (factIndex + 1) % facts.length;
+            document.getElementById('cat-fact').textContent = facts[factIndex];
+        }
+
+        // p5.js - Risograph yarn/ink particles
+        let cats = [];
+        let inkDrops = [];
+        let scrollY = 0;
+
+        const inkColors = [
+            [61, 154, 92],   // green
+            [232, 98, 42],   // orange
+            [245, 200, 66],  // yellow
+            [232, 90, 138]   // pink
+        ];
+
+        function setup() {
+            let canvas = createCanvas(windowWidth, windowHeight);
+            canvas.parent('p5-canvas');
+
+            for (let i = 0; i < 18; i++) {
+                cats.push(new CatEntity());
+            }
+        }
+
+        function draw() {
+            clear();
+            scrollY = window.scrollY;
+
+            // Draw yarn threads
+            drawYarn();
+
+            // Cat entities
+            cats.forEach(cat => {
+                cat.update();
+                cat.display();
+            });
+
+            // Ink drops on scroll
+            if (scrollY > 0 && frameCount % 8 === 0) {
+                let c = inkColors[floor(random(inkColors.length))];
+                inkDrops.push({
+                    x: random(width),
+                    y: random(height),
+                    r: random(4, 16),
+                    color: c,
+                    alpha: 80,
+                    life: 120
+                });
+            }
+
+            // Draw ink drops
+            for (let i = inkDrops.length - 1; i >= 0; i--) {
+                let d = inkDrops[i];
+                d.life--;
+                d.alpha = map(d.life, 0, 120, 0, 80);
+                noStroke();
+                fill(d.color[0], d.color[1], d.color[2], d.alpha);
+                circle(d.x, d.y, d.r * 2);
+                if (d.life <= 0) inkDrops.splice(i, 1);
+            }
+        }
+
+        function drawYarn() {
+            let t = millis() * 0.0003;
+            for (let i = 0; i < 5; i++) {
+                let c = inkColors[i % inkColors.length];
+                stroke(c[0], c[1], c[2], 20);
+                strokeWeight(1.5);
+                noFill();
+                beginShape();
+                for (let x = 0; x <= width; x += 15) {
+                    let y = height * (0.15 + i * 0.18) + sin(x * 0.008 + t + i) * 40 + cos(x * 0.004 + t * 0.7) * 25;
+                    vertex(x, y);
+                }
+                endShape();
+            }
+        }
+
+        class CatEntity {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = random(width);
+                this.y = random(height);
+                this.vx = random(-0.8, 0.8);
+                this.vy = random(-0.8, 0.8);
+                this.size = random(6, 18);
+                let c = inkColors[floor(random(inkColors.length))];
+                this.r = c[0]; this.g = c[1]; this.b = c[2];
+                this.alpha = random(40, 100);
+                this.shape = floor(random(3)); // 0: circle, 1: square, 2: cross
+                this.angle = random(TWO_PI);
+                this.rotSpeed = random(-0.02, 0.02);
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.angle += this.rotSpeed;
+
+                // Scroll drift
+                this.y -= scrollY * 0.0008;
+
+                if (this.x < -30 || this.x > width + 30 || this.y < -30 || this.y > height + 30) {
+                    this.reset();
+                }
+            }
+
+            display() {
+                push();
+                translate(this.x, this.y);
+                rotate(this.angle);
+                noStroke();
+                fill(this.r, this.g, this.b, this.alpha);
+
+                if (this.shape === 0) {
+                    circle(0, 0, this.size);
+                } else if (this.shape === 1) {
+                    rectMode(CENTER);
+                    rect(0, 0, this.size, this.size);
+                } else {
+                    // Cross/plus shape
+                    rect(0, 0, this.size, this.size * 0.3);
+                    rect(0, 0, this.size * 0.3, this.size);
+                }
+                pop();
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>

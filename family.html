@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大家庭 | Campus Felines Family</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@300;400;700&family=Noto+Sans+SC:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fdf8f0;
+            --accent-1: #ff6b6b;
+            --accent-2: #4a90d9;
+            --accent-3: #f5c842;
+            --text: #1e1a2e;
+            --grain-opacity: 0.12;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body, html {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
+            overflow-x: hidden;
+            height: 600vh;
+        }
+
+        /* Grain overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            background: url('https://grainy-gradients.vercel.app/noise.svg');
+            opacity: var(--grain-opacity);
+            mix-blend-mode: multiply;
+        }
+
+        /* VHS scan lines */
+        .vhs-lines {
+            position: fixed;
+            inset: 0;
+            background:
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.04) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.008), rgba(0, 0, 255, 0.02));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        /* p5 canvas */
+        #p5-canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+
+        /* Content overlay */
+        .content-overlay {
+            position: relative;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .section {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 10%;
+        }
+
+        /* Hero text */
+        .hero-text {
+            font-family: 'Syne', sans-serif;
+            font-size: 11vw;
+            line-height: 0.82;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+
+        .data-label {
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.22em;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            text-transform: uppercase;
+        }
+
+        .data-label::before {
+            content: "";
+            width: 38px;
+            height: 2px;
+            background: var(--text);
+            margin-right: 14px;
+        }
+
+        /* Side navigation */
+        .side-nav {
+            position: fixed;
+            right: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+        }
+
+        .side-nav div {
+            width: 11px;
+            height: 11px;
+            border: 2px solid var(--text);
+            margin: 14px 0;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .side-nav div.active {
+            background: var(--text);
+        }
+
+        /* Back button */
+        .back-btn {
+            position: fixed;
+            top: 36px;
+            left: 50px;
+            z-index: 200;
+            font-family: 'Space Grotesk', monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 10px 20px;
+            border: 2px solid var(--text);
+            border-radius: 50px;
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            pointer-events: all;
+        }
+
+        .back-btn:hover { background: var(--text); color: var(--bg); }
+
+        /* Cat grid overlay (appears in final section) */
+        .cat-grid-section {
+            height: 200vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 8%;
+        }
+
+        .cat-grid-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 4rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 3rem;
+            text-align: center;
+            pointer-events: auto;
+        }
+
+        .cat-links-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+            pointer-events: auto;
+        }
+
+        .cat-link-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 20px;
+            padding: 24px;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .cat-link-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+            border-color: rgba(0,0,0,0.2);
+        }
+
+        .cat-link-card .cat-emoji {
+            font-size: 2.5rem;
+        }
+
+        .cat-link-card .cat-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .cat-link-card .cat-cn {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #666;
+        }
+
+        .cat-link-card .cat-role {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.5;
+        }
+
+        .cat-link-card .cat-id {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 0.65rem;
+            opacity: 0.4;
+        }
+
+        /* Color accents for each card */
+        .card-1 { border-top: 4px solid #ff8e72; }
+        .card-2 { border-top: 4px solid #4a90d9; }
+        .card-3 { border-top: 4px solid #9b59ff; }
+        .card-4 { border-top: 4px solid #5a8a5e; }
+        .card-5 { border-top: 4px solid #ffb347; }
+        .card-6 { border-top: 4px solid #3d9a5c; }
+
+        /* Scroll progress */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #ff6b6b, #4a90d9, #f5c842);
+            z-index: 10000;
+            transition: width 0.1s ease;
+        }
+
+        /* Bottom footer */
+        .footer-section {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 10%;
+        }
+
+        .footer-section h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-section p {
+            font-size: 1.1rem;
+            opacity: 0.6;
+            max-width: 500px;
+            line-height: 1.7;
+            margin-bottom: 2rem;
+        }
+
+        .home-btn {
+            display: inline-block;
+            padding: 16px 40px;
+            background: var(--text);
+            color: var(--bg);
+            font-family: 'Space Grotesk', monospace;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            text-decoration: none;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            pointer-events: auto;
+        }
+
+        .home-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="vhs-lines"></div>
+    <div class="scroll-progress" id="scroll-progress"></div>
+
+    <div class="side-nav">
+        <div class="active" onclick="scrollToSection(0)"></div>
+        <div onclick="scrollToSection(1)"></div>
+        <div onclick="scrollToSection(2)"></div>
+        <div onclick="scrollToSection(3)"></div>
+        <div onclick="scrollToSection(4)"></div>
+    </div>
+
+    <a class="back-btn" href="index.html">← 返回主页</a>
+
+    <div id="p5-canvas-container"></div>
+
+    <div class="content-overlay">
+
+        <!-- Section 1: Hero -->
+        <section class="section">
+            <span class="data-label">CHRONICLE 001 / FAMILY_CORE</span>
+            <h1 class="hero-text" style="color: var(--accent-1);">CAMPUS<br>FAMILY</h1>
+        </section>
+
+        <!-- Section 2: Subtitle -->
+        <section class="section" style="align-items: flex-end; text-align: right;">
+            <span class="data-label">ARCHIVE / 006_CATS</span>
+            <h1 class="hero-text" style="color: var(--accent-2);">SIX<br>SOULS</h1>
+        </section>
+
+        <!-- Section 3: Description -->
+        <section class="section">
+            <span class="data-label">MEMORY_STREAM / UNRAVEL</span>
+            <h1 class="hero-text" style="color: var(--accent-3);">ONE<br>HOME</h1>
+        </section>
+
+        <!-- Section 4: Cat Grid -->
+        <section class="cat-grid-section">
+            <div class="cat-grid-title">大家庭成员</div>
+            <div class="cat-links-grid">
+                <a href="cat-xiaoyu.html" class="cat-link-card card-1">
+                    <div class="cat-emoji">🍊</div>
+                    <div class="cat-name">XIAOYU</div>
+                    <div class="cat-cn">小 橘</div>
+                    <div class="cat-role">图书馆守护者</div>
+                    <div class="cat-id">档案 #001</div>
+                </a>
+                <a href="cat-xueqiu.html" class="cat-link-card card-2">
+                    <div class="cat-emoji">🌙</div>
+                    <div class="cat-name">XUEQIU</div>
+                    <div class="cat-cn">雪 球</div>
+                    <div class="cat-role">月光巡逻队</div>
+                    <div class="cat-id">档案 #002</div>
+                </a>
+                <a href="cat-momo.html" class="cat-link-card card-3">
+                    <div class="cat-emoji">🔮</div>
+                    <div class="cat-name">MOMO</div>
+                    <div class="cat-cn">墨 墨</div>
+                    <div class="cat-role">棱镜折光师</div>
+                    <div class="cat-id">档案 #003</div>
+                </a>
+                <a href="cat-tiaowen.html" class="cat-link-card card-4">
+                    <div class="cat-emoji">🌿</div>
+                    <div class="cat-name">TIAOWEN</div>
+                    <div class="cat-cn">条 纹</div>
+                    <div class="cat-role">地形拓扑者</div>
+                    <div class="cat-id">档案 #004</div>
+                </a>
+                <a href="cat-buding.html" class="cat-link-card card-5">
+                    <div class="cat-emoji">🍮</div>
+                    <div class="cat-name">BUDING</div>
+                    <div class="cat-cn">布 丁</div>
+                    <div class="cat-role">系统调试员</div>
+                    <div class="cat-id">档案 #005</div>
+                </a>
+                <a href="cat-huahua.html" class="cat-link-card card-6">
+                    <div class="cat-emoji">🎨</div>
+                    <div class="cat-name">HUAHUA</div>
+                    <div class="cat-cn">花 花</div>
+                    <div class="cat-role">活版印刷师</div>
+                    <div class="cat-id">档案 #006</div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Section 5: Footer -->
+        <section class="footer-section">
+            <h2>校园猫咪大家庭</h2>
+            <p>六只个性迥异的猫咪，共同守护着这片充满活力的校园。每一只都有自己独特的故事，等待你去发现。</p>
+            <a href="index.html" class="home-btn">回到主页</a>
+        </section>
+
+    </div>
+
+    <script>
+        let scrollYVal = 0;
+        let images = [];
+        let flowField = [];
+        let cubeSize = 230;
+        let catEmojis = ['🍊', '🌙', '🔮', '🌿', '🍮', '🎨'];
+
+        // Cat color palettes for cube faces
+        const catColors = [
+            [255, 142, 114],  // 小橘 - warm orange
+            [74, 144, 217],   // 雪球 - cool blue
+            [155, 89, 255],   // 墨墨 - purple
+            [90, 138, 94],    // 条纹 - moss green
+            [255, 179, 71],   // 布丁 - peach
+            [61, 154, 92]     // 花花 - green
+        ];
+
+        const catNames = ['小橘', '雪球', '墨墨', '条纹', '布丁', '花花'];
+
+        function setup() {
+            const canvas = createCanvas(windowWidth, windowHeight, WEBGL);
+            canvas.parent('p5-canvas-container');
+            rectMode(CENTER);
+            textAlign(CENTER, CENTER);
+
+            // Flow field for background
+            for (let i = 0; i < 60; i++) {
+                flowField.push({
+                    x: random(-width, width),
+                    y: random(-height, height),
+                    txt: random(['校园', '猫咪', '家庭', '🐾', 'CAMPUS', 'FELINE', '大家庭', '六只']),
+                    size: random(18, 70),
+                    speed: random(0.8, 2.5),
+                    alpha: random(15, 40)
+                });
+            }
+        }
+
+        function draw() {
+            scrollYVal = window.scrollY;
+            let maxScroll = document.body.scrollHeight - windowHeight;
+            let scrollFactor = constrain(scrollYVal / maxScroll, 0, 1);
+
+            // Update scroll progress bar
+            document.getElementById('scroll-progress').style.width = (scrollFactor * 100) + '%';
+
+            // Update side nav
+            let navDots = document.querySelectorAll('.side-nav div');
+            let activeIdx = floor(scrollFactor * 5);
+            navDots.forEach((d, i) => d.classList.toggle('active', i === activeIdx));
+
+            // Background
+            background(253, 248, 240);
+
+            // Kinetic typography background
+            push();
+            translate(0, 0, -600);
+            drawKineticTypography(scrollFactor);
+            pop();
+
+            // Lighting
+            ambientLight(210);
+            pointLight(255, 255, 255, 300, -300, 400);
+            pointLight(255, 200, 150, -300, 200, 200);
+
+            if (scrollFactor < 0.35) {
+                // Phase 1: Rotating cube
+                drawRotatingCube(scrollFactor);
+            } else if (scrollFactor < 0.55) {
+                // Phase 2: Unfolding
+                let unfoldFactor = map(scrollFactor, 0.35, 0.55, 0, 1);
+                drawUnfoldingCube(unfoldFactor);
+            } else if (scrollFactor < 0.75) {
+                // Phase 3: Filmstrip
+                let playFactor = map(scrollFactor, 0.55, 0.75, 0, 1);
+                drawFilmstrip(playFactor);
+            } else {
+                // Phase 4: Scatter to grid
+                let gridFactor = map(scrollFactor, 0.75, 1, 0, 1);
+                drawScatterGrid(gridFactor);
+            }
+        }
+
+        function drawKineticTypography(f) {
+            noStroke();
+            flowField.forEach((p, i) => {
+                let c = catColors[i % catColors.length];
+                fill(c[0], c[1], c[2], p.alpha);
+                textSize(p.size);
+                text(p.txt, p.x, p.y + f * 600);
+                p.y -= p.speed;
+                if (p.y < -height) p.y = height;
+            });
+        }
+
+        function drawRotatingCube(f) {
+            push();
+            rotateX(f * TWO_PI * 1.8 + millis() * 0.0003);
+            rotateY(f * TWO_PI * 1.2 + millis() * 0.0004);
+            rotateZ(f * PI * 0.5);
+            let s = map(f, 0, 0.35, 0.9, 1.15);
+            scale(s);
+            drawColorCubeFaces(cubeSize);
+            pop();
+        }
+
+        function drawUnfoldingCube(f) {
+            push();
+            rotateX(PI * 0.08);
+            for (let i = 0; i < 6; i++) {
+                push();
+                let xPos = (i - 2.5) * (cubeSize + 18) * f;
+                translate(xPos, 0, 0);
+                rotateY(lerp(i * PI / 2, 0, f));
+                drawFaceWithColor(i, cubeSize);
+                pop();
+            }
+            pop();
+        }
+
+        function drawFilmstrip(f) {
+            push();
+            let stripWidth = width * 1.8;
+            let xOffset = -f * stripWidth * 0.4;
+            translate(xOffset, 0, 0);
+
+            for (let i = -8; i < 8; i++) {
+                push();
+                translate(i * (cubeSize + 14), 0, 0);
+
+                let jitterX = random(-1.5, 1.5) * f;
+                let jitterY = random(-1.5, 1.5) * f;
+                translate(jitterX, jitterY);
+
+                // Film frame
+                noFill();
+                stroke(30, 30, 30, 80);
+                strokeWeight(8);
+                rect(0, 0, cubeSize + 12, cubeSize + 45);
+
+                // Face
+                drawFaceWithColor(Math.abs(i) % 6, cubeSize);
+
+                // Perforations
+                fill(30, 30, 30);
+                noStroke();
+                rect(-cubeSize / 2 - 6, -cubeSize / 2 - 12, 10, 14);
+                rect(cubeSize / 2 + 6, -cubeSize / 2 - 12, 10, 14);
+                rect(-cubeSize / 2 - 6, cubeSize / 2 + 12, 10, 14);
+                rect(cubeSize / 2 + 6, cubeSize / 2 + 12, 10, 14);
+                pop();
+            }
+
+            // Glitch overlay
+            if (random(1) > 0.88) {
+                push();
+                fill(255, 0, 0, 40);
+                rect(random(-width, width), random(-height, height), width, 2);
+                fill(0, 255, 255, 40);
+                rect(random(-width, width), random(-height, height), width, 4);
+                pop();
+            }
+            pop();
+        }
+
+        function drawScatterGrid(f) {
+            // Six faces scatter to grid positions
+            let gridPositions = [
+                [-cubeSize * 1.1, -cubeSize * 0.55],
+                [0, -cubeSize * 0.55],
+                [cubeSize * 1.1, -cubeSize * 0.55],
+                [-cubeSize * 1.1, cubeSize * 0.55],
+                [0, cubeSize * 0.55],
+                [cubeSize * 1.1, cubeSize * 0.55]
+            ];
+
+            for (let i = 0; i < 6; i++) {
+                push();
+                let startX = (i - 2.5) * (cubeSize + 18);
+                let targetX = gridPositions[i][0];
+                let targetY = gridPositions[i][1];
+
+                let x = lerp(startX, targetX, easeInOut(f));
+                let y = lerp(0, targetY, easeInOut(f));
+                let rot = lerp(i * PI / 2, 0, f);
+                let s = lerp(1, 0.85, easeInOut(f));
+
+                translate(x, y, 0);
+                rotateY(rot);
+                scale(s);
+                drawFaceWithColor(i, cubeSize * 0.9);
+                pop();
+            }
+        }
+
+        function easeInOut(t) {
+            return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        }
+
+        function drawColorCubeFaces(s) {
+            let h = s / 2;
+            // Front
+            push(); translate(0, 0, h); drawFaceWithColor(0, s); pop();
+            // Back
+            push(); translate(0, 0, -h); rotateY(PI); drawFaceWithColor(1, s); pop();
+            // Right
+            push(); translate(h, 0, 0); rotateY(HALF_PI); drawFaceWithColor(2, s); pop();
+            // Left
+            push(); translate(-h, 0, 0); rotateY(-HALF_PI); drawFaceWithColor(3, s); pop();
+            // Top
+            push(); translate(0, -h, 0); rotateX(HALF_PI); drawFaceWithColor(4, s); pop();
+            // Bottom
+            push(); translate(0, h, 0); rotateX(-HALF_PI); drawFaceWithColor(5, s); pop();
+        }
+
+        function drawFaceWithColor(idx, s) {
+            let c = catColors[idx % catColors.length];
+            let name = catNames[idx % catNames.length];
+
+            // Background
+            fill(c[0], c[1], c[2], 200);
+            stroke(255, 255, 255, 60);
+            strokeWeight(2);
+            rect(0, 0, s, s, 8);
+
+            // Lighter overlay
+            fill(255, 255, 255, 40);
+            noStroke();
+            rect(0, -s * 0.15, s, s * 0.7, 4);
+
+            // Cat name text
+            fill(255, 255, 255, 220);
+            noStroke();
+            textSize(s * 0.14);
+            textStyle(BOLD);
+            text(name, 0, -s * 0.12);
+
+            // Cat emoji representation (using geometric shapes)
+            drawCatFace(0, s * 0.08, s * 0.22, c);
+
+            // ID number
+            fill(255, 255, 255, 120);
+            textSize(s * 0.07);
+            textStyle(NORMAL);
+            text('#00' + (idx + 1), 0, s * 0.3);
+        }
+
+        function drawCatFace(x, y, size, c) {
+            push();
+            translate(x, y);
+
+            // Body
+            fill(255, 255, 255, 180);
+            noStroke();
+            ellipse(0, size * 0.1, size, size * 0.9);
+
+            // Ears
+            fill(255, 255, 255, 200);
+            triangle(-size * 0.35, -size * 0.3, -size * 0.5, -size * 0.65, -size * 0.1, -size * 0.35);
+            triangle(size * 0.35, -size * 0.3, size * 0.5, -size * 0.65, size * 0.1, -size * 0.35);
+
+            // Eyes
+            fill(c[0] * 0.3, c[1] * 0.3, c[2] * 0.3, 200);
+            ellipse(-size * 0.2, -size * 0.05, size * 0.14, size * 0.18);
+            ellipse(size * 0.2, -size * 0.05, size * 0.14, size * 0.18);
+
+            // Nose
+            fill(255, 180, 180, 200);
+            triangle(-size * 0.06, size * 0.1, size * 0.06, size * 0.1, 0, size * 0.18);
+
+            pop();
+        }
+
+        function scrollToSection(idx) {
+            let maxScroll = document.body.scrollHeight - windowHeight;
+            window.scrollTo({ top: (idx / 4) * maxScroll, behavior: 'smooth' });
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>条纹 | 地形拓扑者</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&family=Noto+Sans+SC:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --birch: #f5f2ec;
+            --birch-mid: #e6dfd0;
+            --bark: #6b5d4f;
+            --moss: #5a8a5e;
+            --moss-light: #a8d4ab;
+            --ink: #2a2520;
+            --text: #2a2520;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
+
+        body {
+            background-color: var(--birch);
+            color: var(--ink);
+            font-family: 'Syne', 'Noto Sans SC', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Grain overlay */
+        #grain-svg {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.35;
+            mix-blend-mode: multiply;
+        }
+
+        /* Custom cursor */
+        #cursor {
+            position: fixed;
+            width: 18px;
+            height: 18px;
+            border: 1.5px solid var(--ink);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            transition: transform 0.08s ease;
+        }
+
+        #p5-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+
+        /* UI Container */
+        .ui-container {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 3.5rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .title-block h1 {
+            font-size: 5.5rem;
+            font-weight: 800;
+            line-height: 0.85;
+            text-transform: uppercase;
+            letter-spacing: -3px;
+            color: var(--ink);
+        }
+
+        .title-block .cn-name {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--moss);
+            margin-top: 8px;
+            letter-spacing: 0.12em;
+        }
+
+        .title-block .id-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.72rem;
+            margin-top: 6px;
+            color: var(--bark);
+            letter-spacing: 0.08em;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.8rem;
+            text-align: right;
+        }
+
+        .stat-item h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            opacity: 0.5;
+            letter-spacing: 0.1em;
+            margin-bottom: 3px;
+        }
+
+        .stat-item p {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .bottom-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .cat-description {
+            max-width: 320px;
+            pointer-events: auto;
+        }
+
+        .cat-description h2 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--moss);
+            font-family: 'Space Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .cat-description p {
+            font-size: 0.88rem;
+            line-height: 1.65;
+            opacity: 0.75;
+            margin-bottom: 14px;
+        }
+
+        .tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.58rem;
+            padding: 3px 10px;
+            background: rgba(90, 138, 94, 0.12);
+            border: 1px solid rgba(90, 138, 94, 0.3);
+            border-radius: 20px;
+            color: var(--moss);
+        }
+
+        .interaction-hint {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.7rem;
+            background: var(--ink);
+            color: var(--birch);
+            padding: 8px 16px;
+            border-radius: 20px;
+            animation: pulse 2.5s ease-in-out infinite;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Back button */
+        .back-btn {
+            position: fixed;
+            top: 36px;
+            right: 50px;
+            z-index: 300;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 10px 20px;
+            border: 2px solid var(--ink);
+            border-radius: 50px;
+            background: var(--birch);
+            color: var(--ink);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+        .back-btn:hover { background: var(--ink); color: var(--birch); }
+
+        /* Topography legend */
+        .topo-legend {
+            position: fixed;
+            bottom: 3.5rem;
+            right: 3.5rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            text-align: right;
+            opacity: 0.45;
+            line-height: 1.8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+
+    <svg id="grain-svg">
+        <filter id="grain-filter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+            <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#grain-filter)" />
+    </svg>
+
+    <div id="cursor"></div>
+
+    <a class="back-btn" href="index.html">← 返回</a>
+
+    <div id="p5-canvas"></div>
+
+    <div class="ui-container">
+        <header class="header">
+            <div class="title-block">
+                <h1>TIAO<br>WEN</h1>
+                <div class="cn-name">条 纹</div>
+                <div class="id-label">// 档案 #004 / 地形拓扑者</div>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <h3>性格</h3>
+                    <p>探索型</p>
+                </div>
+                <div class="stat-item">
+                    <h3>形态</h3>
+                    <p>拓扑流体</p>
+                </div>
+                <div class="stat-item">
+                    <h3>毛色</h3>
+                    <p>虎斑纹</p>
+                </div>
+                <div class="stat-item">
+                    <h3>据点</h3>
+                    <p>草坪</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="bottom-nav">
+            <div class="cat-description">
+                <h2>拓扑解剖</h2>
+                <p>条纹以一系列引力涟漪的形式存在于校园草坪。它的虎斑纹路如同地形等高线，每一次移动都会在空间中留下拓扑波纹。点击屏幕可以扰动场域。</p>
+                <div class="tags">
+                    <span class="tag">虎斑</span>
+                    <span class="tag">草坪</span>
+                    <span class="tag">拓扑</span>
+                    <span class="tag">探险家</span>
+                </div>
+            </div>
+            <div class="interaction-hint" onclick="triggerExplosion()">
+                点击扰动场域 / 悬停映射
+            </div>
+        </div>
+    </div>
+
+    <div class="topo-legend">
+        等高线间距: 0.05<br>
+        场域分辨率: 高<br>
+        引力系数: 0.85<br>
+        粒子密度: 极高
+    </div>
+
+    <script>
+        let particles = [];
+        let isExploded = false;
+        let explosionTimer = 0;
+        let canvas;
+
+        // Cat shape points (topographic)
+        const CAT_SHAPE = [
+            {x: 0, y: -95}, {x: 35, y: -115}, {x: 55, y: -155}, {x: 75, y: -115},
+            {x: 115, y: -95}, {x: 125, y: -35}, {x: 95, y: 18}, {x: 0, y: 38},
+            {x: -95, y: 18}, {x: -125, y: -35}, {x: -115, y: -95}, {x: -75, y: -115},
+            {x: -55, y: -155}, {x: -35, y: -115},
+            {x: 95, y: 48}, {x: 170, y: 145}, {x: 190, y: 290}, {x: 95, y: 385},
+            {x: -95, y: 385}, {x: -190, y: 290}, {x: -170, y: 145}, {x: -95, y: 48},
+            {x: 145, y: 340}, {x: 240, y: 370}, {x: 290, y: 310}, {x: 270, y: 270}
+        ];
+
+        class Particle {
+            constructor(x, y, tx, ty) {
+                this.pos = createVector(random(width), random(height));
+                this.target = createVector(tx, ty);
+                this.vel = createVector(0, 0);
+                this.acc = createVector(0, 0);
+                this.maxSpeed = 9;
+                this.maxForce = 0.45;
+                this.r = random(2, 5.5);
+                // Moss/bark color palette
+                let palette = [
+                    color(90, 138, 94, random(160, 255)),
+                    color(107, 93, 79, random(140, 220)),
+                    color(168, 212, 171, random(150, 230)),
+                    color(42, 37, 32, random(120, 200)),
+                    color(120, 100, 80, random(130, 210))
+                ];
+                this.color = random(palette);
+                this.mass = random(1, 2.5);
+            }
+
+            behaviors() {
+                let arrive = this.arrive(this.target);
+                let flee = this.flee(createVector(mouseX, mouseY));
+                arrive.mult(1);
+                flee.mult(4.5);
+                this.applyForce(arrive);
+                this.applyForce(flee);
+            }
+
+            applyForce(f) { this.acc.add(f); }
+
+            update() {
+                if (isExploded) {
+                    this.applyForce(createVector(0, 0.12 * this.mass));
+                    this.vel.add(this.acc);
+                    this.pos.add(this.vel);
+                    this.acc.mult(0);
+                    this.vel.mult(0.975);
+                    if (this.pos.y > height - 15) {
+                        this.pos.y = height - 15;
+                        this.vel.y *= -0.5;
+                    }
+                } else {
+                    this.behaviors();
+                    this.vel.add(this.acc);
+                    this.pos.add(this.vel);
+                    this.acc.mult(0);
+                }
+            }
+
+            show() {
+                stroke(this.color);
+                strokeWeight(this.r);
+                point(this.pos.x, this.pos.y);
+
+                if (!isExploded) {
+                    let d = dist(this.pos.x, this.pos.y, mouseX, mouseY);
+                    if (d < 90) {
+                        strokeWeight(0.4);
+                        stroke(90, 138, 94, map(d, 0, 90, 90, 0));
+                        line(this.pos.x, this.pos.y, mouseX, mouseY);
+                    }
+                }
+            }
+
+            arrive(target) {
+                let desired = p5.Vector.sub(target, this.pos);
+                let d = desired.mag();
+                let speed = d < 100 ? map(d, 0, 100, 0, this.maxSpeed) : this.maxSpeed;
+                desired.setMag(speed);
+                let steer = p5.Vector.sub(desired, this.vel);
+                steer.limit(this.maxForce);
+                return steer;
+            }
+
+            flee(target) {
+                let desired = p5.Vector.sub(target, this.pos);
+                let d = desired.mag();
+                if (d < 75) {
+                    desired.setMag(this.maxSpeed);
+                    desired.mult(-1);
+                    let steer = p5.Vector.sub(desired, this.vel);
+                    steer.limit(this.maxForce * 2);
+                    return steer;
+                }
+                return createVector(0, 0);
+            }
+        }
+
+        function setup() {
+            canvas = createCanvas(windowWidth, windowHeight);
+            canvas.id('p5-canvas');
+            generateParticles();
+        }
+
+        function generateParticles() {
+            particles = [];
+            const cx = width / 2;
+            const cy = height / 2 - 60;
+            const scale = 0.55;
+
+            for (let i = 0; i < CAT_SHAPE.length; i++) {
+                let p1 = CAT_SHAPE[i];
+                let p2 = CAT_SHAPE[(i + 1) % CAT_SHAPE.length];
+                for (let t = 0; t <= 1; t += 0.04) {
+                    let x = lerp(p1.x, p2.x, t) * scale + cx;
+                    let y = lerp(p1.y, p2.y, t) * scale + cy;
+                    particles.push(new Particle(x, y, x, y));
+                }
+            }
+
+            // Interior fill points
+            for (let i = 0; i < 200; i++) {
+                let angle = random(TWO_PI);
+                let r = random(20, 120) * scale;
+                let x = cx + cos(angle) * r;
+                let y = cy + sin(angle) * r * 1.2;
+                particles.push(new Particle(x, y, x, y));
+            }
+        }
+
+        function draw() {
+            background(245, 242, 236);
+
+            // Draw topographic contour lines
+            drawTopoLines();
+
+            particles.forEach(p => {
+                p.update();
+                p.show();
+            });
+
+            if (isExploded) {
+                explosionTimer++;
+                if (explosionTimer > 120) {
+                    isExploded = false;
+                    explosionTimer = 0;
+                    generateParticles();
+                }
+            }
+
+            // Custom cursor
+            let cursor = document.getElementById('cursor');
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+        }
+
+        function drawTopoLines() {
+            // Draw flowing topographic contour lines
+            let t = millis() * 0.0004;
+            for (let y = 0; y < height; y += 35) {
+                beginShape();
+                noFill();
+                stroke(90, 138, 94, 18);
+                strokeWeight(0.8);
+                for (let x = 0; x <= width; x += 8) {
+                    let n = noise(x * 0.006, y * 0.006, t);
+                    let yOff = map(n, 0, 1, -12, 12);
+                    vertex(x, y + yOff);
+                }
+                endShape();
+            }
+        }
+
+        function triggerExplosion() {
+            if (!isExploded) {
+                isExploded = true;
+                explosionTimer = 0;
+                particles.forEach(p => {
+                    p.vel = p5.Vector.random2D().mult(random(3, 12));
+                });
+            }
+        }
+
+        function mousePressed() {
+            triggerExplosion();
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            generateParticles();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布丁 | 系统调试员</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --win-silver: #c8c8c8;
+            --win-white: #ffffff;
+            --win-shadow: #7a7a7a;
+            --win-dark: #383838;
+            --accent-blue: #000090;
+            --bg-desktop: #e8e8e8;
+            --cat-peach: #ffb347;
+            --cat-cream: #fff5e6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-desktop);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+            color: var(--win-dark);
+            background-image:
+                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* p5 Canvas */
+        #p5-canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Desktop */
+        .desktop {
+            position: relative;
+            z-index: 1;
+            padding: 20px;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        /* Windows UI */
+        .win-window {
+            position: absolute;
+            background: var(--win-silver);
+            border: 2px solid;
+            border-color: var(--win-white) var(--win-shadow) var(--win-shadow) var(--win-white);
+            box-shadow: 2px 2px 0 0 #000;
+            padding: 2px;
+            pointer-events: all;
+            transition: transform 0.08s ease-out;
+        }
+
+        .win-window:hover {
+            transform: translateY(-1px);
+            box-shadow: 3px 3px 0 0 #000;
+        }
+
+        .win-header {
+            background: linear-gradient(90deg, var(--accent-blue) 0%, #1a6ad4 100%);
+            padding: 4px 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            letter-spacing: 0.3px;
+            user-select: none;
+        }
+
+        .win-title {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .win-controls {
+            display: flex;
+            gap: 2px;
+        }
+
+        .win-btn {
+            width: 16px;
+            height: 14px;
+            background: var(--win-silver);
+            border: 1px solid;
+            border-color: var(--win-white) var(--win-shadow) var(--win-shadow) var(--win-white);
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: black;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .win-btn:active {
+            border-color: var(--win-shadow) var(--win-white) var(--win-white) var(--win-shadow);
+        }
+
+        .win-content {
+            padding: 14px;
+            border: 1px inset rgba(0,0,0,0.15);
+            background: var(--win-white);
+            margin-top: 2px;
+            min-height: 80px;
+        }
+
+        .cat-stats {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--win-dark);
+        }
+
+        .cat-stats .prompt { color: #008000; }
+        .cat-stats .value { color: #0000cc; }
+        .cat-stats .error { color: #cc0000; }
+
+        /* Window positions */
+        #win-profile { top: 8vh; left: 8vw; width: 340px; }
+        #win-vitals { top: 12vh; left: 55vw; width: 300px; }
+        #win-gallery { top: 48vh; left: 12vw; width: 420px; }
+        #win-terminal { top: 55vh; left: 58vw; width: 350px; }
+        #win-about { top: 78vh; left: 30vw; width: 380px; }
+
+        /* Hero text */
+        .hero-text {
+            position: fixed;
+            top: 8%;
+            left: 8%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .hero-text h1 {
+            font-size: 9rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            line-height: 0.8;
+            color: rgba(0, 0, 0, 0.04);
+            font-family: 'VT323', monospace;
+            letter-spacing: -4px;
+        }
+
+        /* Taskbar */
+        .taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 36px;
+            background: var(--win-silver);
+            border-top: 2px solid;
+            border-color: var(--win-white) var(--win-shadow) var(--win-shadow) var(--win-white);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            padding: 0 6px;
+            gap: 4px;
+        }
+
+        .start-btn {
+            background: var(--win-silver);
+            border: 2px solid;
+            border-color: var(--win-white) var(--win-shadow) var(--win-shadow) var(--win-white);
+            padding: 3px 10px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .start-btn:active {
+            border-color: var(--win-shadow) var(--win-white) var(--win-white) var(--win-shadow);
+        }
+
+        .taskbar-item {
+            background: var(--win-silver);
+            border: 2px solid;
+            border-color: var(--win-shadow) var(--win-white) var(--win-white) var(--win-shadow);
+            padding: 2px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            min-width: 120px;
+        }
+
+        .taskbar-clock {
+            margin-left: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 0 10px;
+            border-left: 1px solid var(--win-shadow);
+        }
+
+        /* Cat image area */
+        .cat-img-area {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #ffe0b2, #ffccbc);
+            border: 1px solid var(--win-shadow);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cat-img-area .pixel-cat {
+            font-size: 4rem;
+            filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.2));
+            animation: float-cat 3s ease-in-out infinite;
+        }
+
+        @keyframes float-cat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .cat-img-area .scan-line {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 3px,
+                rgba(0,0,0,0.04) 3px,
+                rgba(0,0,0,0.04) 4px
+            );
+            pointer-events: none;
+        }
+
+        /* Progress bar */
+        .progress-container {
+            margin-top: 10px;
+        }
+
+        .progress-label {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-bar {
+            height: 14px;
+            background: var(--win-silver);
+            border: 1px inset rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-blue);
+            transition: width 0.5s ease;
+        }
+
+        /* Terminal style */
+        .terminal {
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11px;
+            padding: 10px;
+            line-height: 1.5;
+            min-height: 120px;
+        }
+
+        .terminal .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 12px;
+            background: #00ff00;
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Back button */
+        .back-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 200;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px 12px;
+            background: var(--win-silver);
+            border: 2px solid;
+            border-color: var(--win-white) var(--win-shadow) var(--win-shadow) var(--win-white);
+            color: var(--win-dark);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: #d0d0d0;
+        }
+
+        /* Sidebar data */
+        .sidebar-data {
+            position: fixed;
+            right: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 9px;
+            text-align: right;
+            writing-mode: vertical-rl;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--win-shadow);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Scroll indicator */
+        .scroll-hint {
+            position: fixed;
+            bottom: 45px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.4;
+            font-family: 'Courier New', monospace;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="p5-canvas-container"></div>
+
+    <div class="hero-text">
+        <h1>BU<br>DING</h1>
+    </div>
+
+    <div class="sidebar-data">
+        CAT.SYS // BUDING_OS // 布丁系统 // 2024
+    </div>
+
+    <a class="back-btn" href="index.html">← 返回主页</a>
+
+    <div class="scroll-hint">↓ 滚动查看更多</div>
+
+    <main class="desktop">
+
+        <!-- Window 1: Profile -->
+        <div class="win-window" id="win-profile">
+            <div class="win-header">
+                <div class="win-title">🐱 C:\Campus\Cats\BuDing.exe</div>
+                <div class="win-controls">
+                    <div class="win-btn">?</div>
+                    <div class="win-btn">_</div>
+                    <div class="win-btn">×</div>
+                </div>
+            </div>
+            <div class="win-content">
+                <div class="cat-img-area">
+                    <div class="pixel-cat">🐈</div>
+                    <div class="scan-line"></div>
+                </div>
+                <div class="cat-stats">
+                    <span class="prompt">> </span>cat.name = <span class="value">"布丁"</span><br>
+                    <span class="prompt">> </span>cat.breed = <span class="value">"布偶猫"</span><br>
+                    <span class="prompt">> </span>cat.color = <span class="value">"奶白+浅棕"</span><br>
+                    <span class="prompt">> </span>cat.mood = <span class="value">"慵懒模式"</span><br>
+                    <span class="prompt">> </span>cat.location = <span class="value">"食堂附近"</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window 2: Vitals -->
+        <div class="win-window" id="win-vitals">
+            <div class="win-header">
+                <div class="win-title">📊 系统监视器.exe</div>
+                <div class="win-controls">
+                    <div class="win-btn">_</div>
+                    <div class="win-btn">□</div>
+                    <div class="win-btn">×</div>
+                </div>
+            </div>
+            <div class="win-content">
+                <div class="progress-container">
+                    <div class="progress-label"><span>饥饿度</span><span id="hunger-val">72%</span></div>
+                    <div class="progress-bar"><div class="progress-fill" id="hunger-bar" style="width:72%;background:#cc6600;"></div></div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label"><span>困倦度</span><span id="sleep-val">88%</span></div>
+                    <div class="progress-bar"><div class="progress-fill" id="sleep-bar" style="width:88%;background:#6600cc;"></div></div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label"><span>撒娇指数</span><span id="cute-val">95%</span></div>
+                    <div class="progress-bar"><div class="progress-fill" id="cute-bar" style="width:95%;background:#cc0066;"></div></div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label"><span>活跃度</span><span id="active-val">34%</span></div>
+                    <div class="progress-bar"><div class="progress-fill" id="active-bar" style="width:34%;background:#006600;"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window 3: Gallery -->
+        <div class="win-window" id="win-gallery">
+            <div class="win-header">
+                <div class="win-title">🖼️ D:\Photos\BuDing_Gallery.rar</div>
+                <div class="win-controls">
+                    <div class="win-btn">_</div>
+                    <div class="win-btn">□</div>
+                    <div class="win-btn">×</div>
+                </div>
+            </div>
+            <div class="win-content">
+                <p style="font-size:11px;margin-bottom:10px;line-height:1.5;">
+                    布丁是校园里最受欢迎的布偶猫，奶白色的毛发配上浅棕色的花纹，像极了一块刚出炉的布丁甜点。它最喜欢在食堂门口等待好心的同学投喂。
+                </p>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                    <div style="height:60px;background:linear-gradient(135deg,#ffe0b2,#ffccbc);border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🐾</div>
+                    <div style="height:60px;background:linear-gradient(135deg,#fff3e0,#ffe0b2);border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">😺</div>
+                    <div style="height:60px;background:linear-gradient(135deg,#fce4ec,#f8bbd0);border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🐈</div>
+                    <div style="height:60px;background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🌸</div>
+                    <div style="height:60px;background:linear-gradient(135deg,#e3f2fd,#bbdefb);border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">⭐</div>
+                    <div style="height:60px;background:linear-gradient(135deg,#f3e5f5,#e1bee7);border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🍮</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window 4: Terminal -->
+        <div class="win-window" id="win-terminal">
+            <div class="win-header">
+                <div class="win-title">💻 C:\WINDOWS\SYSTEM32\cat_debug.bat</div>
+                <div class="win-controls">
+                    <div class="win-btn">×</div>
+                </div>
+            </div>
+            <div class="win-content" style="padding:0;">
+                <div class="terminal" id="terminal-output">
+                    C:\> cat_debug.exe --target=buding<br>
+                    Loading cat profile...<br>
+                    [████████████] 100%<br>
+                    <br>
+                    while(awake) {<br>
+                    &nbsp;&nbsp;eat(food);<br>
+                    &nbsp;&nbsp;nap(3600);<br>
+                    &nbsp;&nbsp;demand_pets();<br>
+                    }<br>
+                    <br>
+                    STATUS: PURRING_ACTIVE<br>
+                    <span class="cursor"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window 5: About -->
+        <div class="win-window" id="win-about">
+            <div class="win-header">
+                <div class="win-title">💾 关于布丁.txt</div>
+                <div class="win-controls">
+                    <div class="win-btn">_</div>
+                    <div class="win-btn">×</div>
+                </div>
+            </div>
+            <div class="win-content">
+                <h2 style="font-size:14px;margin-bottom:10px;color:var(--accent-blue);">档案 #005 — 布丁</h2>
+                <div style="display:flex;gap:14px;align-items:flex-start;">
+                    <div style="flex:1;border:1px solid #ccc;padding:8px;background:#f9f9f9;text-align:center;">
+                        <div style="font-size:3rem;">🍮</div>
+                        <div style="font-size:9px;margin-top:4px;color:#666;">布偶猫 · 食堂</div>
+                    </div>
+                    <div style="flex:2;font-size:11px;line-height:1.6;">
+                        布丁以其无与伦比的撒娇技能著称，能让任何路过的同学停下脚步。<br><br>
+                        特长：装可怜、蹭腿、占领暖气片<br>
+                        弱点：看到食物立刻失去淑女形象<br><br>
+                        <button onclick="alert('布丁: 喵~')" style="padding:4px 16px;border:2px solid;border-color:white #808080 #808080 white;background:#c0c0c0;cursor:pointer;font-size:11px;">投喂布丁</button>
+                        <button onclick="alert('布丁已进入睡眠模式...')" style="padding:4px 12px;border:2px solid;border-color:white #808080 #808080 white;background:#c0c0c0;cursor:pointer;margin-left:6px;font-size:11px;">哄睡</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Taskbar -->
+    <div class="taskbar">
+        <button class="start-btn">🪟 开始</button>
+        <div class="taskbar-item">🐱 BuDing.exe</div>
+        <div class="taskbar-item">📊 系统监视器</div>
+        <div class="taskbar-clock" id="clock">00:00</div>
+    </div>
+
+    <script>
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${h}:${m}`;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // Animate vitals
+        function animateVitals() {
+            const vitals = [
+                { bar: 'hunger-bar', val: 'hunger-val', base: 72, range: 15, color: '#cc6600' },
+                { bar: 'sleep-bar', val: 'sleep-val', base: 88, range: 8, color: '#6600cc' },
+                { bar: 'cute-bar', val: 'cute-val', base: 95, range: 5, color: '#cc0066' },
+                { bar: 'active-bar', val: 'active-val', base: 34, range: 20, color: '#006600' }
+            ];
+            vitals.forEach(v => {
+                const newVal = Math.min(100, Math.max(0, v.base + (Math.random() - 0.5) * v.range));
+                document.getElementById(v.bar).style.width = newVal + '%';
+                document.getElementById(v.val).textContent = Math.round(newVal) + '%';
+            });
+        }
+        setInterval(animateVitals, 2000);
+
+        // Make windows draggable
+        document.querySelectorAll('.win-window').forEach(win => {
+            let isDragging = false;
+            let startX, startY, startLeft, startTop;
+
+            win.querySelector('.win-header').addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = win.getBoundingClientRect();
+                startLeft = rect.left;
+                startTop = rect.top;
+                win.style.zIndex = 50;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                win.style.left = (startLeft + dx) + 'px';
+                win.style.top = (startTop + dy) + 'px';
+                win.style.position = 'fixed';
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                win.style.zIndex = '';
+            });
+        });
+
+        // p5.js - Blueprint cat animation
+        let scrollY = 0;
+        let catPoints = [];
+        let particles = [];
+
+        function setup() {
+            let canvas = createCanvas(windowWidth, windowHeight);
+            canvas.parent('p5-canvas-container');
+
+            // Generate cat blueprint points
+            for (let a = 0; a < TWO_PI; a += 0.08) {
+                let r = 100;
+                let x = r * cos(a) * (1 + 0.3 * cos(3 * a));
+                let y = r * sin(a) * (1 + 0.2 * sin(2 * a));
+                catPoints.push({ x: x + width / 2, y: y + height / 2 });
+            }
+
+            // Blueprint particles
+            for (let i = 0; i < 60; i++) {
+                particles.push({
+                    x: random(width),
+                    y: random(height),
+                    vx: random(-0.5, 0.5),
+                    vy: random(-0.5, 0.5),
+                    size: random(2, 6),
+                    alpha: random(20, 60)
+                });
+            }
+        }
+
+        function draw() {
+            clear();
+            scrollY = window.scrollY;
+
+            // Draw blueprint grid
+            stroke(0, 0, 128, 8);
+            strokeWeight(0.5);
+            for (let x = 0; x < width; x += 50) {
+                line(x, 0, x, height);
+            }
+            for (let y = 0; y < height; y += 50) {
+                line(0, y, width, y);
+            }
+
+            // Draw cat blueprint outline
+            let t = millis() * 0.001;
+            noFill();
+            stroke(255, 179, 71, 25);
+            strokeWeight(1.5);
+            beginShape();
+            catPoints.forEach(p => {
+                let wobble = sin(t + p.x * 0.01) * 3;
+                vertex(p.x + wobble, p.y + cos(t + p.y * 0.01) * 3);
+            });
+            endShape(CLOSE);
+
+            // Particles
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0 || p.x > width) p.vx *= -1;
+                if (p.y < 0 || p.y > height) p.vy *= -1;
+
+                noStroke();
+                fill(255, 179, 71, p.alpha);
+                circle(p.x, p.y, p.size);
+            });
+
+            // Draw connection lines between nearby particles
+            stroke(255, 179, 71, 12);
+            strokeWeight(0.5);
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    let d = dist(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
+                    if (d < 100) {
+                        line(particles[i].x, particles[i].y, particles[j].x, particles[j].y);
+                    }
+                }
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>

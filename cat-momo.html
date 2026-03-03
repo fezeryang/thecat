@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>墨墨 | 棱镜折光师</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600;800&family=JetBrains+Mono:wght@300;500&family=Noto+Sans+SC:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f0ff;
+            --prism-1: #bdb2ff;
+            --prism-2: #80ffdb;
+            --prism-3: #ffc6ff;
+            --prism-4: #a8d8ff;
+            --accent: #7c6bff;
+            --text: #1a1030;
+            --glass: rgba(255, 255, 255, 0.38);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            cursor: crosshair;
+        }
+
+        /* Prismatic ambient light */
+        .ambient {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 8% 12%, rgba(189, 178, 255, 0.45) 0%, transparent 40%),
+                radial-gradient(circle at 92% 88%, rgba(128, 255, 219, 0.35) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.8) 0%, transparent 65%),
+                radial-gradient(circle at 85% 15%, rgba(255, 198, 255, 0.3) 0%, transparent 35%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #p5-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+
+        /* UI Layer */
+        #ui-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            pointer-events: none;
+            padding: 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .header {
+            max-width: 580px;
+            opacity: 0;
+            animation: slideUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) 0.2s forwards;
+        }
+
+        .cat-meta {
+            display: flex;
+            gap: 2rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(0,0,0,0.45);
+            margin-bottom: 1.2rem;
+        }
+
+        .cat-meta strong { color: var(--accent); }
+
+        h1 {
+            font-size: 5.5rem;
+            font-weight: 800;
+            line-height: 0.88;
+            letter-spacing: -3px;
+            margin-bottom: 0.8rem;
+            background: linear-gradient(135deg, #4a3aff 0%, #9b59ff 40%, #ff6bff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cn-name {
+            font-family: 'Noto Sans SC', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+        }
+
+        .footer-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            opacity: 0;
+            animation: fadeIn 1.8s ease 0.6s forwards;
+        }
+
+        .description {
+            max-width: 320px;
+            font-size: 0.9rem;
+            line-height: 1.65;
+            color: rgba(0,0,0,0.6);
+            background: var(--glass);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 22px 26px;
+            border-left: 3px solid var(--accent);
+            border-radius: 0 16px 16px 0;
+        }
+
+        .description h3 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            padding: 3px 10px;
+            background: rgba(124, 107, 255, 0.12);
+            border: 1px solid rgba(124, 107, 255, 0.3);
+            border-radius: 20px;
+            color: var(--accent);
+        }
+
+        .action-side {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 12px;
+            pointer-events: auto;
+        }
+
+        .summon-btn {
+            background: linear-gradient(135deg, #7c6bff, #c46bff);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: none;
+            letter-spacing: 0.06em;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 30px rgba(124, 107, 255, 0.4);
+        }
+
+        .summon-btn:hover {
+            transform: scale(1.05) translateY(-2px);
+            box-shadow: 0 14px 40px rgba(124, 107, 255, 0.5);
+        }
+
+        .hint {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            opacity: 0.4;
+            letter-spacing: 0.1em;
+        }
+
+        /* Floating labels */
+        .cat-label {
+            position: absolute;
+            background: rgba(255,255,255,0.82);
+            border: 1px solid rgba(124, 107, 255, 0.25);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(124, 107, 255, 0.1);
+            backdrop-filter: blur(5px);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 25;
+        }
+
+        .cat-label::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+        }
+
+        /* Back button */
+        .back-btn {
+            position: fixed;
+            top: 36px;
+            right: 50px;
+            z-index: 300;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 10px 20px;
+            border: 2px solid var(--text);
+            border-radius: 50px;
+            background: white;
+            color: var(--text);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+        .back-btn:hover { background: var(--text); color: white; }
+
+        @keyframes slideUp {
+            from { transform: translateY(40px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient"></div>
+
+    <div id="p5-canvas"></div>
+
+    <a class="back-btn" href="index.html">← 返回</a>
+
+    <div id="ui-layer">
+        <div class="header">
+            <div class="cat-meta">
+                <div>品种 <strong>纯黑猫</strong></div>
+                <div>特质 <strong>棱镜折光</strong></div>
+                <div>状态 <strong>互动中</strong></div>
+                <div>档案 <strong>#003</strong></div>
+            </div>
+            <h1>MOMO</h1>
+            <div class="cn-name">墨 墨</div>
+        </div>
+
+        <div class="footer-info">
+            <div class="description">
+                <h3>档案描述</h3>
+                墨墨是校园里最神秘的存在，纯黑的毛发能折射出七彩棱镜般的光芒。它喜欢在阳光下打滚，将光线折射成彩虹洒落一地。点击屏幕可以召唤玩具，观察它的动态好奇心。
+                <div class="tags">
+                    <span class="tag">纯黑</span>
+                    <span class="tag">棱镜</span>
+                    <span class="tag">流体运动</span>
+                    <span class="tag">好奇心旺盛</span>
+                </div>
+            </div>
+            <div class="action-side">
+                <button class="summon-btn" onclick="spawnToy()">召唤玩具</button>
+                <div class="hint">点击任意处 / 鼠标追踪</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cat;
+        let toys = [];
+        let labels = [];
+        let prismTrails = [];
+
+        function setup() {
+            const canvas = createCanvas(windowWidth, windowHeight);
+            canvas.id('p5-canvas');
+            cat = new PrismaticCat(width / 2, height / 2);
+
+            addLabel("心跳: 棱镜共振");
+            addLabel("材质: 折光黑曜石");
+            addLabel("情绪: 好奇探索");
+        }
+
+        function draw() {
+            clear();
+
+            // Draw prism trail effects
+            for (let i = prismTrails.length - 1; i >= 0; i--) {
+                let t = prismTrails[i];
+                t.life -= 2;
+                t.size += 0.5;
+                noStroke();
+                fill(t.r, t.g, t.b, t.life * 0.5);
+                circle(t.x, t.y, t.size);
+                if (t.life <= 0) prismTrails.splice(i, 1);
+            }
+
+            // Update toys
+            for (let i = toys.length - 1; i >= 0; i--) {
+                toys[i].update();
+                toys[i].show();
+                if (toys[i].lifespan <= 0) toys.splice(i, 1);
+            }
+
+            // Cat
+            cat.behaviors(toys);
+            cat.update();
+            cat.show();
+
+            updateLabels();
+        }
+
+        function mousePressed() {
+            if (mouseY > 120 && mouseY < height - 120) {
+                toys.push(new Toy(mouseX, mouseY));
+            }
+        }
+
+        function spawnToy() {
+            toys.push(new Toy(random(width * 0.2, width * 0.8), random(height * 0.3, height * 0.7)));
+        }
+
+        class PrismaticCat {
+            constructor(x, y) {
+                this.pos = createVector(x, y);
+                this.vel = createVector(0, 0);
+                this.acc = createVector(0, 0);
+                this.maxSpeed = 4.5;
+                this.maxForce = 0.18;
+                this.radius = 75;
+                this.history = [];
+                this.angle = 0;
+                this.morph = 0;
+                this.hue = 0;
+                this.tailAngle = 0;
+                this.earTwitch = 0;
+            }
+
+            behaviors(toys) {
+                let target = createVector(mouseX, mouseY);
+                if (toys.length > 0) target = toys[0].pos;
+                let arrive = this.arrive(target);
+                this.applyForce(arrive);
+            }
+
+            applyForce(f) { this.acc.add(f); }
+
+            arrive(target) {
+                let desired = p5.Vector.sub(target, this.pos);
+                let d = desired.mag();
+                let speed = this.maxSpeed;
+                if (d < 100) speed = map(d, 0, 100, 0, this.maxSpeed);
+                desired.setMag(speed);
+                let steer = p5.Vector.sub(desired, this.vel);
+                steer.limit(this.maxForce);
+                return steer;
+            }
+
+            update() {
+                this.vel.add(this.acc);
+                this.vel.limit(this.maxSpeed);
+                this.pos.add(this.vel);
+                this.acc.mult(0);
+                this.history.push(this.pos.copy());
+                if (this.history.length > 25) this.history.shift();
+                this.angle += 0.022;
+                this.morph = sin(this.angle) * 12;
+                this.hue = (this.hue + 1) % 360;
+                this.tailAngle += 0.05;
+                this.earTwitch = sin(this.angle * 2.5) * 5;
+
+                // Add prism trail
+                if (this.vel.mag() > 1.5 && frameCount % 3 === 0) {
+                    let colors = [
+                        [189, 178, 255], [128, 255, 219], [255, 198, 255],
+                        [168, 216, 255], [255, 240, 128]
+                    ];
+                    let c = colors[floor(random(colors.length))];
+                    prismTrails.push({
+                        x: this.pos.x + random(-20, 20),
+                        y: this.pos.y + random(-20, 20),
+                        r: c[0], g: c[1], b: c[2],
+                        life: 120, size: 8
+                    });
+                }
+            }
+
+            show() {
+                push();
+                translate(this.pos.x, this.pos.y);
+
+                let speed = this.vel.mag();
+                let lean = this.vel.x * 0.6;
+
+                // Prismatic glow layers
+                drawingContext.shadowBlur = 50;
+                drawingContext.shadowColor = `hsla(${this.hue}, 80%, 70%, 0.4)`;
+
+                for (let i = 0; i < 5; i++) {
+                    let hShift = (this.hue + i * 30) % 360;
+                    let r = this.radius + i * 9 + this.morph;
+                    fill(hue2rgb(hShift, 80, 75, 130 - i * 20));
+                    noStroke();
+                    beginShape();
+                    for (let a = 0; a < TWO_PI; a += 0.4) {
+                        let xoff = map(cos(a), -1, 1, 0, 1.5);
+                        let yoff = map(sin(a), -1, 1, 0, 1.5);
+                        let offset = map(noise(xoff + frameCount * 0.018, yoff), 0, 1, -14, 14);
+                        let rf = r + offset;
+                        vertex(rf * cos(a), rf * sin(a));
+                    }
+                    endShape(CLOSE);
+                }
+
+                drawingContext.shadowBlur = 0;
+
+                // Black body core
+                fill(15, 10, 25);
+                noStroke();
+                beginShape();
+                for (let a = 0; a < TWO_PI; a += 0.3) {
+                    let xoff = map(cos(a), -1, 1, 0, 1.5);
+                    let yoff = map(sin(a), -1, 1, 0, 1.5);
+                    let offset = map(noise(xoff + frameCount * 0.015, yoff + 10), 0, 1, -8, 8);
+                    let rf = (this.radius - 10) + offset + this.morph * 0.5;
+                    vertex(rf * cos(a), rf * sin(a));
+                }
+                endShape(CLOSE);
+
+                // Ears
+                let earH = (this.hue + 60) % 360;
+                fill(hue2rgb(earH, 70, 70, 200));
+                noStroke();
+                triangle(-40 + lean * 0.3, -55, -58 + lean * 0.3, -88 + this.earTwitch, -18 + lean * 0.3, -62);
+                triangle(40 + lean * 0.3, -55, 58 + lean * 0.3, -88 - this.earTwitch, 18 + lean * 0.3, -62);
+                // Inner ear
+                fill(hue2rgb((earH + 20) % 360, 80, 80, 180));
+                triangle(-38 + lean * 0.3, -58, -52 + lean * 0.3, -82 + this.earTwitch, -22 + lean * 0.3, -64);
+                triangle(38 + lean * 0.3, -58, 52 + lean * 0.3, -82 - this.earTwitch, 22 + lean * 0.3, -64);
+
+                // Eyes - prismatic
+                let eyeX = map(this.vel.x, -5, 5, -8, 8);
+                let eyeY = map(this.vel.y, -5, 5, -4, 4);
+                let eyeHue = (this.hue + 120) % 360;
+
+                fill(hue2rgb(eyeHue, 90, 65, 255));
+                ellipse(-22 + lean * 0.3 + eyeX, -10 + eyeY, 20, 22);
+                ellipse(22 + lean * 0.3 + eyeX, -10 + eyeY, 20, 22);
+                fill(10);
+                ellipse(-22 + lean * 0.3 + eyeX, -10 + eyeY, 9, 20);
+                ellipse(22 + lean * 0.3 + eyeX, -10 + eyeY, 9, 20);
+                fill(255, 255, 255, 220);
+                ellipse(-18 + lean * 0.3 + eyeX, -14 + eyeY, 6, 6);
+                ellipse(26 + lean * 0.3 + eyeX, -14 + eyeY, 6, 6);
+
+                // Nose
+                fill(hue2rgb((this.hue + 180) % 360, 60, 80, 200));
+                triangle(-5 + lean * 0.3, 5, 5 + lean * 0.3, 5, 0 + lean * 0.3, 12);
+
+                // Whiskers (prismatic)
+                for (let i = 0; i < 3; i++) {
+                    let wHue = (this.hue + i * 40) % 360;
+                    stroke(hue2rgb(wHue, 80, 75, 150));
+                    strokeWeight(1.2);
+                    let wy = 6 + i * 5;
+                    line(-18 + lean * 0.3, wy, -62 + lean * 0.3, wy - 4 + i * 2);
+                    line(18 + lean * 0.3, wy, 62 + lean * 0.3, wy - 4 + i * 2);
+                }
+
+                // Tail
+                let tw = sin(this.tailAngle) * 35;
+                noFill();
+                for (let i = 0; i < 4; i++) {
+                    let tHue = (this.hue + i * 25) % 360;
+                    stroke(hue2rgb(tHue, 80, 70, 180 - i * 30));
+                    strokeWeight(7 - i);
+                    beginShape();
+                    curveVertex(25, 20);
+                    curveVertex(45, 45);
+                    curveVertex(75 + tw, 75);
+                    curveVertex(95 + tw, 55 + sin(this.tailAngle * 0.6) * 20);
+                    curveVertex(105 + tw * 1.3, 25 + sin(this.tailAngle * 0.6) * 20);
+                    endShape();
+                }
+
+                pop();
+
+                // Trail
+                for (let i = 0; i < this.history.length; i++) {
+                    let p = this.history[i];
+                    let hShift = (this.hue + i * 5) % 360;
+                    let d = map(i, 0, this.history.length, 5, 35);
+                    fill(hue2rgb(hShift, 80, 75, map(i, 0, this.history.length, 0, 40)));
+                    noStroke();
+                    circle(p.x, p.y, d + this.morph * 0.3);
+                }
+            }
+        }
+
+        // HSL to RGBA helper
+        function hue2rgb(h, s, l, a) {
+            h /= 360; s /= 100; l /= 100;
+            let r, g, b;
+            if (s === 0) { r = g = b = l; }
+            else {
+                const hue2 = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2(p, q, h + 1/3);
+                g = hue2(p, q, h);
+                b = hue2(p, q, h - 1/3);
+            }
+            return color(r * 255, g * 255, b * 255, a);
+        }
+
+        class Toy {
+            constructor(x, y) {
+                this.pos = createVector(x, y);
+                this.vel = p5.Vector.random2D().mult(2.5);
+                this.lifespan = 280;
+                this.hue = random(360);
+            }
+            update() {
+                this.pos.add(this.vel);
+                this.lifespan -= 1.2;
+                this.vel.mult(0.97);
+                this.hue = (this.hue + 2) % 360;
+            }
+            show() {
+                push();
+                noStroke();
+                drawingContext.shadowBlur = 20;
+                drawingContext.shadowColor = `hsla(${this.hue}, 80%, 70%, 0.8)`;
+                fill(hue2rgb(this.hue, 80, 70, this.lifespan * 0.7));
+                circle(this.pos.x, this.pos.y, 22);
+                drawingContext.shadowBlur = 0;
+                pop();
+            }
+        }
+
+        function addLabel(text) {
+            const div = document.createElement('div');
+            div.className = 'cat-label';
+            div.textContent = text;
+            div.style.left = '-200px';
+            document.body.appendChild(div);
+            labels.push({ el: div, offset: createVector(random(-160, 160), random(-160, 160)) });
+        }
+
+        function updateLabels() {
+            labels.forEach((l, i) => {
+                let tx = cat.pos.x + l.offset.x;
+                let ty = cat.pos.y + l.offset.y;
+                let cx = parseFloat(l.el.style.left) || tx;
+                let cy = parseFloat(l.el.style.top) || ty;
+                let nx = lerp(cx, tx, 0.08);
+                let ny = lerp(cy, ty, 0.08);
+                l.el.style.left = `${nx}px`;
+                l.el.style.top = `${ny}px`;
+                l.el.style.opacity = map(sin(frameCount * 0.04 + i), -1, 1, 0.3, 0.9);
+            });
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>
