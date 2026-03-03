@@ -1,26 +1,60 @@
 /**
  * Home.tsx — Campus Felines Homepage
- * Design: Kinetic Editorial — Verlet physics pendulum cards
- * p5.js: Spring simulation with mouse repulsion + ambient particles
- * Color: Warm cream #fdf8f2, each cat has its own accent hue
- * Features: Physics pendulum cards, ambient particles, cat stats, search filter
+ * Design: Kinetic Editorial — Filament particles & Fixed positioning
+ * p5.js: Filament particles with mouse attraction
+ * Color: Warm cream #f9f7f2
+ * Features: Fixed cat nodes, hover effects, parallax, coordinates
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { CATS } from "@/lib/cats";
 
+// Fixed positions for the cats to match the reference design aesthetic
+const CAT_POSITIONS = [
+  { top: "20%", left: "15%" },
+  { top: "15%", left: "60%" },
+  { top: "60%", left: "25%" },
+  { top: "55%", left: "70%" },
+  { top: "35%", left: "40%" }, // Extra position for 5th cat
+  { top: "75%", left: "50%" }, // Extra position for 6th cat
+];
+
+// Blob shapes for variety
+const BLOB_SHAPES = [
+  "45% 55% 70% 30% / 30% 40% 60% 70%",
+  "60% 40% 30% 70% / 60% 30% 70% 40%",
+  "30% 70% 70% 30% / 50%",
+  "50% 50% 20% 80%",
+  "40% 60% 60% 40% / 40% 40% 60% 60%",
+  "70% 30% 30% 70% / 60% 40% 60% 40%",
+];
+
 export default function Home() {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-  const [filter, setFilter] = useState("");
   const [hoveredCat, setHoveredCat] = useState<string | null>(null);
-  const [time, setTime] = useState(new Date());
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+  // Mouse move handler for coordinates and parallax
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+
+      // Parallax effect
+      const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
+      const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
+
+      document.querySelectorAll(".cat-node").forEach((node, index) => {
+        const factor = (index + 1) * 1.2;
+        (node as HTMLElement).style.transform =
+          `translate(${moveX * factor}px, ${moveY * factor}px)`;
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
+  // p5.js Sketch
   useEffect(() => {
     let p5Instance: any;
 
@@ -28,167 +62,112 @@ export default function Home() {
       const p5 = (await import("p5")).default;
 
       const sketch = (p: any) => {
-        const gravity = 0.42;
-        const friction = 0.986;
-        const springs: Array<{
-          anchor: { x: number; y: number };
-          bob: { x: number; y: number; oldX: number; oldY: number; targetLen: number; id: number };
-        }> = [];
-        const numCats = CATS.length;
-        let ambientParticles: Array<{ x: number; y: number; vx: number; vy: number; size: number; hue: number; life: number; maxLife: number }> = [];
-        let frameCount = 0;
+        let particles: any[] = [];
+        const numParticles = 80;
+        const colors = ["#ff5f40", "#4070ff", "#2ecc71", "#f1c40f"];
+
+        class Filament {
+          pos: any;
+          prevPos: any;
+          vel: any;
+          acc: any;
+          maxSpeed: number;
+          color: any;
+          noiseScale: number;
+          life: number;
+
+          constructor() {
+            this.pos = p.createVector(p.random(p.width), p.random(p.height));
+            this.prevPos = this.pos.copy();
+            this.vel = p.createVector(0, 0);
+            this.acc = p.createVector(0, 0);
+            this.maxSpeed = p.random(1, 3);
+            this.color = p.color(p.random(colors));
+            this.color.setAlpha(p.random(50, 150));
+            this.noiseScale = 0.005;
+            this.life = p.random(100, 300);
+          }
+
+          update() {
+            let n = p.noise(
+              this.pos.x * this.noiseScale,
+              this.pos.y * this.noiseScale,
+              p.frameCount * 0.002
+            );
+            let angle = p.map(n, 0, 1, 0, p.TWO_PI * 4);
+            this.acc.add(p5.Vector.fromAngle(angle).mult(0.1));
+
+            // Attraction to mouse
+            let d = p.dist(p.mouseX, p.mouseY, this.pos.x, this.pos.y);
+            if (d < 300) {
+              let attract = p.createVector(
+                p.mouseX - this.pos.x,
+                p.mouseY - this.pos.y
+              );
+              attract.normalize();
+              attract.mult(0.2);
+              this.acc.add(attract);
+            }
+
+            this.vel.add(this.acc);
+            this.vel.limit(this.maxSpeed);
+            this.pos.add(this.vel);
+            this.acc.mult(0);
+
+            if (
+              this.pos.x < 0 ||
+              this.pos.x > p.width ||
+              this.pos.y < 0 ||
+              this.pos.y > p.height
+            ) {
+              this.pos = p.createVector(p.random(p.width), p.random(p.height));
+              this.prevPos = this.pos.copy();
+            }
+          }
+
+          display() {
+            p.strokeWeight(p.random(0.5, 2));
+            p.stroke(this.color);
+            p.line(this.pos.x, this.pos.y, this.prevPos.x, this.prevPos.y);
+
+            // Add granular "pollen" dots
+            if (p.random() > 0.95) {
+              p.noStroke();
+              p.fill(this.color);
+              p.ellipse(this.pos.x, this.pos.y, 2, 2);
+            }
+
+            this.prevPos = this.pos.copy();
+          }
+        }
 
         p.setup = () => {
           const cnv = p.createCanvas(p.windowWidth, p.windowHeight);
           cnv.parent(canvasRef.current!);
-          cnv.style("position", "absolute");
+          cnv.style("position", "fixed");
           cnv.style("top", "0");
           cnv.style("left", "0");
-          cnv.style("pointer-events", "none");
+          cnv.style("z-index", "1");
 
-          const positions = [
-            { ax: p.width * 0.10, targetLen: 280 },
-            { ax: p.width * 0.26, targetLen: 320 },
-            { ax: p.width * 0.42, targetLen: 260 },
-            { ax: p.width * 0.58, targetLen: 340 },
-            { ax: p.width * 0.74, targetLen: 290 },
-            { ax: p.width * 0.90, targetLen: 310 },
-          ];
-
-          for (let i = 0; i < numCats; i++) {
-            const anchor = { x: positions[i].ax, y: -20 };
-            const bob = {
-              x: anchor.x + p.random(-60, 60),
-              y: p.height * 0.40 + p.random(-40, 40),
-              oldX: anchor.x,
-              oldY: p.height * 0.40,
-              targetLen: positions[i].targetLen,
-              id: i,
-            };
-            springs.push({ anchor, bob });
+          for (let i = 0; i < numParticles; i++) {
+            particles.push(new Filament());
           }
-
-          // Initialize ambient particles
-          for (let i = 0; i < 40; i++) {
-            ambientParticles.push(createParticle(p));
-          }
+          p.background("#f9f7f2");
         };
 
-        const createParticle = (p: any) => ({
-          x: p.random(p.width),
-          y: p.random(p.height),
-          vx: p.random(-0.3, 0.3),
-          vy: p.random(-0.5, -0.1),
-          size: p.random(2, 6),
-          hue: p.random(360),
-          life: p.random(100, 200),
-          maxLife: p.random(100, 200),
-        });
-
         p.draw = () => {
-          p.clear();
-          frameCount++;
+          // Subtle fade for trail effect
+          p.background(249, 247, 242, 15);
 
-          const catColors = CATS.map((c) => {
-            const hex = c.colorHex;
-            const r = parseInt(hex.slice(1, 3), 16);
-            const g = parseInt(hex.slice(3, 5), 16);
-            const b = parseInt(hex.slice(5, 7), 16);
-            return [r, g, b];
-          });
-
-          // Ambient particles
-          ambientParticles.forEach((ap, i) => {
-            ap.x += ap.vx + p.noise(ap.x * 0.003, ap.y * 0.003, frameCount * 0.005) * 0.4 - 0.2;
-            ap.y += ap.vy;
-            ap.life--;
-            if (ap.life <= 0) ambientParticles[i] = createParticle(p);
-            const alpha = p.map(ap.life, 0, ap.maxLife, 0, 40);
-            p.colorMode(p.HSB, 360, 100, 100, 100);
-            p.fill(ap.hue, 30, 90, alpha);
-            p.noStroke();
-            p.circle(ap.x, ap.y, ap.size);
-            p.colorMode(p.RGB, 255);
-          });
-
-          // Decorative grid lines (very subtle)
-          p.stroke(180, 160, 130, 8);
-          p.strokeWeight(0.5);
-          for (let x = 0; x < p.width; x += 80) {
-            p.line(x, 0, x, p.height);
-          }
-          for (let y = 0; y < p.height; y += 80) {
-            p.line(0, y, p.width, y);
-          }
-          p.noStroke();
-
-          springs.forEach((s, idx) => {
-            const dx = s.bob.x - s.anchor.x;
-            const dy = s.bob.y - s.anchor.y;
-            const distance = p.sqrt(dx * dx + dy * dy);
-            const difference = s.bob.targetLen - distance;
-            const percent = (difference / distance) * 0.5;
-            const offsetX = dx * percent;
-            const offsetY = dy * percent;
-
-            const vx = (s.bob.x - s.bob.oldX) * friction;
-            const vy = (s.bob.y - s.bob.oldY) * friction;
-
-            s.bob.oldX = s.bob.x;
-            s.bob.oldY = s.bob.y;
-            s.bob.x += vx + offsetX;
-            s.bob.y += vy + offsetY + gravity;
-
-            // Mouse repulsion
-            const mDist = p.dist(p.mouseX, p.mouseY, s.bob.x, s.bob.y);
-            if (mDist < 220) {
-              const angle = p.atan2(s.bob.y - p.mouseY, s.bob.x - p.mouseX);
-              const push = p.map(mDist, 0, 220, 4, 0);
-              s.bob.x += p.cos(angle) * push;
-              s.bob.y += p.sin(angle) * push;
-            }
-
-            s.bob.x = p.constrain(s.bob.x, 120, p.width - 120);
-            s.bob.y = p.constrain(s.bob.y, 60, p.height - 200);
-
-            const c = catColors[idx];
-
-            // String with gradient
-            for (let t = 0.05; t <= 1; t += 0.04) {
-              const sx = p.lerp(s.anchor.x, s.bob.x, t);
-              const sy = p.lerp(s.anchor.y, s.bob.y, t);
-              const px2 = p.lerp(s.anchor.x, s.bob.x, t - 0.04);
-              const py2 = p.lerp(s.anchor.y, s.bob.y, t - 0.04);
-              const alpha = p.map(t, 0, 1, 12, 75);
-              p.stroke(c[0], c[1], c[2], alpha);
-              p.strokeWeight(p.map(t, 0, 1, 0.8, 2.5));
-              p.line(px2, py2, sx, sy);
-            }
-            p.noStroke();
-
-            // Anchor dot
-            p.fill(c[0], c[1], c[2], 230);
-            p.circle(s.anchor.x, 0, 10);
-
-            // Glow halo
-            p.fill(c[0], c[1], c[2], 16);
-            p.circle(s.bob.x, s.bob.y, 260);
-            p.fill(c[0], c[1], c[2], 8);
-            p.circle(s.bob.x, s.bob.y, 340);
-
-            // Update DOM card
-            const card = cardRefs.current[idx];
-            if (card) {
-              const rotation = p.constrain((s.bob.x - s.bob.oldX) * 2.5, -16, 16);
-              card.style.left = `${s.bob.x - 110}px`;
-              card.style.top = `${s.bob.y - 40}px`;
-              card.style.transform = `rotate(${rotation}deg)`;
-            }
+          particles.forEach(pt => {
+            pt.update();
+            pt.display();
           });
         };
 
         p.windowResized = () => {
           p.resizeCanvas(p.windowWidth, p.windowHeight);
+          p.background("#f9f7f2");
         };
       };
 
@@ -196,144 +175,108 @@ export default function Home() {
     };
 
     initP5();
-    return () => { if (p5Instance) p5Instance.remove(); };
+    return () => {
+      if (p5Instance) p5Instance.remove();
+    };
   }, []);
 
-  const filteredCats = CATS.filter((cat) =>
-    filter === "" ||
-    cat.cnName.includes(filter) ||
-    cat.breed.includes(filter) ||
-    cat.role.includes(filter) ||
-    cat.tags.some((t) => t.includes(filter))
-  );
-
   return (
-    <div className="relative w-full h-screen overflow-hidden" style={{ background: "linear-gradient(160deg, #fdf8f2 0%, #f8f2ea 50%, #f2ece0 100%)" }}>
-      <div ref={canvasRef} className="absolute inset-0" />
+    <div
+      className="relative w-full h-screen overflow-hidden grain-overlay"
+      style={{ backgroundColor: "#f9f7f2", cursor: "crosshair" }}
+    >
+      <div ref={canvasRef} />
 
       {/* Header */}
-      <header className="absolute top-0 left-0 z-20 p-8">
-        <div className="data-label mb-1" style={{ color: "#b0956a" }}>
-          // 校园猫咪档案系统 V3.0 · {time.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+      <header className="absolute top-0 left-0 w-full p-10 flex justify-between items-start z-10 pointer-events-none">
+        <div className="font-mono text-xs tracking-[0.2em] uppercase leading-relaxed text-[#1a1a1a]">
+          CAMPUS ARCHIVE / VOL.01
+          <span className="block font-extrabold text-3xl tracking-tighter mt-2 text-[#ff5f40] font-sans">
+            FELINE TRACES
+          </span>
         </div>
-        <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(2.8rem, 6vw, 5.5rem)", color: "#1a1208", lineHeight: 0.92, letterSpacing: "-0.03em" }}>
-          CAMPUS
-          <br />
-          FELINES
-        </h1>
-        <div style={{ fontFamily: "var(--font-body)", fontSize: "0.8rem", color: "#8a7a60", marginTop: 8, maxWidth: 200, lineHeight: 1.5 }}>
-          六只校园猫咪<br />的数字档案馆
+        <div className="font-mono text-xs tracking-[0.2em] uppercase leading-relaxed text-right text-[#1a1a1a]">
+          COORDINATES: <br />
+          <span className="text-sm text-[#1a1a1a]">
+            {mousePos.x.toFixed(2).padStart(6, "0")},{" "}
+            {mousePos.y.toFixed(2).padStart(6, "0")}
+          </span>
         </div>
       </header>
 
-      {/* Search */}
-      <div className="absolute top-8 right-8 z-20" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="搜索猫咪..."
-          style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", padding: "8px 14px", borderRadius: 100, border: "1.5px solid rgba(176,149,106,0.3)", background: "rgba(255,255,255,0.75)", backdropFilter: "blur(8px)", outline: "none", width: 160, color: "#1a1208" }}
-        />
-        {filter && (
-          <button onClick={() => setFilter("")} style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", padding: "6px 12px", borderRadius: 100, border: "none", background: "#1a1208", color: "#fdf8f2", cursor: "pointer" }}>
-            清除
-          </button>
-        )}
+      {/* Cat Nodes */}
+      <div className="absolute top-0 left-0 w-full h-full z-10">
+        {CATS.map((cat, idx) => {
+          const position = CAT_POSITIONS[idx % CAT_POSITIONS.length];
+          const blobShape = BLOB_SHAPES[idx % BLOB_SHAPES.length];
+          const isHovered = hoveredCat === cat.id;
+
+          return (
+            <Link key={cat.id} href={`/cat/${cat.id}`}>
+              <div
+                className="cat-node absolute cursor-pointer transition-transform duration-600 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-105"
+                style={{
+                  top: position.top,
+                  left: position.left,
+                  zIndex: isHovered ? 50 : 10,
+                }}
+                onMouseEnter={() => setHoveredCat(cat.id)}
+                onMouseLeave={() => setHoveredCat(null)}
+              >
+                {/* Blob Image Container */}
+                <div
+                  className="cat-blob relative overflow-hidden bg-white transition-all duration-1000 ease-in-out mix-blend-multiply"
+                  style={{
+                    width: "280px",
+                    height: "340px",
+                    borderRadius: isHovered ? "50%" : blobShape,
+                    boxShadow: "0 30px 60px rgba(0,0,0,0.05)",
+                  }}
+                >
+                  <img
+                    src={`https://images.unsplash.com/${cat.unsplashId}?auto=format&fit=crop&w=800&q=80`}
+                    alt={cat.cnName}
+                    className="w-full h-full object-cover transition-all duration-500 ease-in-out"
+                    style={{
+                      filter: isHovered ? "grayscale(0%) contrast(1)" : "grayscale(100%) contrast(1.1)",
+                      opacity: isHovered ? 1 : 0.9,
+                    }}
+                  />
+                </div>
+
+                {/* Info Box */}
+                <div
+                  className="cat-info absolute bg-white px-4 py-2.5 font-mono text-[11px] text-[#1a1a1a]"
+                  style={{
+                    bottom: "-20px",
+                    left: "20px",
+                    transform: "rotate(-2deg)",
+                    boxShadow: "10px 10px 0px rgba(0,0,0,0.05)",
+                  }}
+                >
+                  <b className="block text-base font-sans mb-1">{cat.cnName}</b>
+                  ID: #{cat.id.toUpperCase()} / {cat.role.toUpperCase()}
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
-      {/* Stats bar */}
-      <div className="absolute z-20" style={{ top: 80, right: 32, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", color: "#b0956a", letterSpacing: "0.06em" }}>
-          ACTIVE: {CATS.length} CATS
-        </div>
-        <div style={{ display: "flex", gap: 4 }}>
-          {CATS.map((cat) => (
-            <div key={cat.id} style={{ width: 8, height: 8, borderRadius: "50%", background: cat.colorHex, opacity: 0.8 }} />
-          ))}
-        </div>
+      {/* Nav Hint */}
+      <div className="absolute bottom-10 right-10 font-mono text-[10px] text-right opacity-50 z-10 pointer-events-none">
+        HOVER TO RESOLVE FILAMENTS
+        <br />
+        CLICK TO ENTER ARCHIVE
       </div>
 
-      {/* System info */}
-      <div className="absolute bottom-8 left-8 z-20">
-        <div className="data-label" style={{ color: "#b0956a" }}>ARCHIVE / 006_CATS / ACTIVE</div>
-        <div className="data-label mt-1" style={{ color: "#b0956a" }}>HOVER TO REPEL / CLICK TO EXPLORE</div>
-      </div>
-
-      {/* Family link */}
-      <Link href="/family" className="absolute bottom-8 right-8 z-20 flex items-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all hover:scale-105" style={{ fontFamily: "var(--font-mono)", background: "#1a1208", color: "#fdf8f2", letterSpacing: "0.04em", borderRadius: 100, textDecoration: "none" }}>
+      {/* Family Link - Keeping as requested */}
+      <Link
+        href="/family"
+        className="absolute bottom-10 left-10 z-20 flex items-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all hover:scale-105 bg-[#1a1208] text-[#fdf8f2] rounded-full no-underline font-mono tracking-wide"
+      >
         大家庭 →
       </Link>
-
-      {/* Cat cards */}
-      {CATS.map((cat, idx) => {
-        const isFiltered = filter !== "" && !filteredCats.includes(cat);
-        return (
-          <Link
-            key={cat.id}
-            href={`/cat/${cat.id}`}
-            ref={(el) => { cardRefs.current[idx] = el; }}
-            onMouseEnter={() => setHoveredCat(cat.id)}
-            onMouseLeave={() => setHoveredCat(null)}
-            className="absolute z-10"
-            style={{
-              width: 220,
-              borderRadius: 18,
-              overflow: "hidden",
-              background: "rgba(255,255,255,0.85)",
-              backdropFilter: "blur(14px)",
-              border: `1.5px solid rgba(255,255,255,0.9)`,
-              boxShadow: hoveredCat === cat.id
-                ? `0 16px 48px rgba(0,0,0,0.18), 0 4px 16px ${cat.colorHex}50`
-                : `0 8px 32px rgba(0,0,0,0.10), 0 2px 8px ${cat.colorHex}30`,
-              textDecoration: "none",
-              display: "block",
-              willChange: "transform",
-              opacity: isFiltered ? 0.25 : 1,
-              transition: "opacity 0.3s, box-shadow 0.3s",
-              pointerEvents: isFiltered ? "none" : "auto",
-            }}
-          >
-            {/* Color band */}
-            <div style={{ height: 5, background: cat.colorHex }} />
-
-            {/* Cat image */}
-            <div style={{ height: 160, background: cat.bgHex, overflow: "hidden", position: "relative" }}>
-              <img
-                src={`https://images.unsplash.com/${cat.unsplashId}?w=400&h=320&fit=crop&auto=format`}
-                alt={cat.cnName}
-                style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.4s", transform: hoveredCat === cat.id ? "scale(1.06)" : "scale(1)" }}
-                loading="lazy"
-              />
-              <div className="absolute top-2 right-2 data-label" style={{ background: "rgba(255,255,255,0.92)", padding: "2px 7px", borderRadius: 4, color: cat.colorHex }}>
-                #{cat.number}
-              </div>
-              {hoveredCat === cat.id && (
-                <div className="absolute inset-0 flex items-center justify-center" style={{ background: `${cat.colorHex}22` }}>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "#fff", background: `${cat.colorHex}cc`, padding: "4px 10px", borderRadius: 100, letterSpacing: "0.06em" }}>
-                    查看档案 →
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Info */}
-            <div style={{ padding: "12px 14px 14px" }}>
-              <div className="data-label" style={{ color: cat.colorHex, marginBottom: 2 }}>{cat.breed}</div>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.3rem", color: "#1a1208", lineHeight: 1.1 }}>
-                {cat.cnName}
-              </div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", color: "#8a7a60", marginTop: 3 }}>
-                {cat.role}
-              </div>
-              <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
-                {cat.tags.slice(0, 2).map((tag) => (
-                  <span key={tag} className="tag-pill" style={{ background: `${cat.colorHex}15`, color: cat.colorHex, fontSize: "0.5rem" }}>{tag}</span>
-                ))}
-              </div>
-            </div>
-          </Link>
-        );
-      })}
     </div>
   );
 }
