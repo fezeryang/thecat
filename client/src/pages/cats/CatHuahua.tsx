@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { getCatById } from "@/lib/cats";
+import ParticleBackground from "@/components/ParticleBackground";
 
 const cat = getCatById("huahua")!;
 
@@ -210,6 +211,7 @@ export default function CatHuahua() {
   return (
     <div className="relative w-full h-screen overflow-hidden" style={{ background: "#f2faf4", cursor: "crosshair" }} onClick={handleStamp}>
       <div ref={canvasRef} className="absolute inset-0 z-0" />
+      <ParticleBackground color="#3d9a5c" />
 
       {/* Back */}
       <Link href="/" className="absolute top-5 left-5 z-30" onClick={(e) => e.stopPropagation()} style={{ fontFamily: "var(--font-mono)", fontSize: "0.65rem", fontWeight: 700, padding: "6px 14px", borderRadius: 0, background: "#f2faf4", border: "2px solid #3d9a5c", color: "#3d9a5c", textDecoration: "none", letterSpacing: "0.06em" }}>

@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import ParticleBackground from "@/components/ParticleBackground";
 import { getCatById } from "@/lib/cats";
 
 const cat = getCatById("tiaowen")!;
@@ -378,6 +379,7 @@ export default function CatTiaowen() {
       <div className="absolute z-10 data-label" style={{ bottom: 16, left: "50%", transform: "translateX(-50%)", color: "#5a8a5e" }}>
         悬停推动粒子 · 点击扰动场域
       </div>
-    </div>
+          <ParticleBackground color="#5a8a5e" />
+</div>
   );
 }

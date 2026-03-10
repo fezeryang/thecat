@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "wouter";
+import ParticleBackground from "@/components/ParticleBackground";
 import { getCatById } from "@/lib/cats";
 
 const cat = getCatById("momo")!;
@@ -386,6 +387,7 @@ export default function CatMomo() {
       <div className="absolute z-10 data-label" style={{ bottom: 16, left: "50%", transform: "translateX(-50%)", color: "#9b59ff" }}>
         移动鼠标 · 墨墨会追随你 / 点击按钮召唤玩具
       </div>
-    </div>
+          <ParticleBackground isRainbow />
+</div>
   );
 }

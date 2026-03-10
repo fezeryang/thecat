@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import ParticleBackground from "@/components/ParticleBackground";
 import { getCatById } from "@/lib/cats";
 
 const cat = getCatById("xueqiu")!;
@@ -351,6 +352,7 @@ export default function CatXueqiu() {
       <div className="absolute z-20 data-label" style={{ bottom: 16, left: "50%", transform: "translateX(-50%)", color: "#4a90d9" }}>
         移动鼠标 · 雪球的眼睛会追踪你
       </div>
-    </div>
+          <ParticleBackground color="#ffffff" />
+</div>
   );
 }

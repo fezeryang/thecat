@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { getCatById } from "@/lib/cats";
+import ParticleBackground from "@/components/ParticleBackground";
 
 const cat = getCatById("buding")!;
 
@@ -293,6 +294,7 @@ export default function CatBuding() {
   return (
     <div className="relative w-full h-screen overflow-hidden" style={{ background: "linear-gradient(135deg, #008080 0%, #006060 100%)", fontFamily: "var(--font-mono)" }}>
       <div ref={canvasRef} className="absolute inset-0 z-0" style={{ pointerEvents: "none" }} />
+      <ParticleBackground color="#ffffff" />
 
       {/* Main window */}
       <div style={{ ...winStyle("main"), ...winBody }} onClick={() => bringToFront("main")}>

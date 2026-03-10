@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "wouter";
+import ParticleBackground from "@/components/ParticleBackground";
 import { getCatById } from "@/lib/cats";
 
 const cat = getCatById("xiaoyu")!;
@@ -522,6 +523,7 @@ export default function CatXiaoyu() {
       >
         鼠标推动场域 / 点击投喂按钮召唤
       </div>
-    </div>
+          <ParticleBackground color="#b0956a" />
+</div>
   );
 }
