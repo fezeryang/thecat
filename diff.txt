@@ -1,0 +1,12 @@
+diff --git a/client/src/pages/cats/CatMomo.tsx b/client/src/pages/cats/CatMomo.tsx
+index d2216b7..e678a96 100644
+--- a/client/src/pages/cats/CatMomo.tsx
++++ b/client/src/pages/cats/CatMomo.tsx
+@@ -7,6 +7,7 @@
+  */
+ import { useEffect, useRef, useState, useCallback } from "react";
+ import { Link } from "wouter";
++import ParticleBackground from "@/components/ParticleBackground";
+ import { getCatById } from "@/lib/cats";
+ 
+ const cat = getCatById("momo")!;

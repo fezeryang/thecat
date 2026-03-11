@@ -1,0 +1,18 @@
+Task 1 Route Map
+
+Session: ses_349950facffemzRi1AwHDCFBR2
+Plan: xiaoyu-meowdows95
+
+Direct search results:
+- client/src/App.tsx:9 -> import CatXiaoyu from "./pages/cats/CatXiaoyu";
+- client/src/App.tsx:21 -> <Route path="/cat/xiaoyu" component={CatXiaoyu} />
+- client/src/pages/cats/CatXiaoyu.tsx:2 -> file header for CatXiaoyu page
+- client/src/pages/cats/CatXiaoyu.tsx:34 -> export default function CatXiaoyu()
+
+Likely insertion point for child route:
+- client/src/App.tsx: after existing /cat/xiaoyu route, add /cat/xiaoyu/story route.
+
+Potential CTA insertion points on Xiaoyu page:
+- Description panel area near line ~464
+- Tabs area near line ~401
+- Existing left panel utility area near line ~327

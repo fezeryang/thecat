@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meowdows 95 - Risograph Cat Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #fdfaf0;
+            --ink-black: #2a2a2a;
+            --ink-pink: #ff6b6b;
+            --ink-blue: #4d96ff;
+            --ink-yellow: #ffcf4d;
+            --border-width: 2px;
+            --grain-strength: 0.15;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%232a2a2a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5V3m0 18v-2M5 12H3m18 0h-2M7 7L5.5 5.5m13 13L17 17m0-10l1.5-1.5M5.5 18.5L7 17'/%3E%3C/svg%3E"), auto;
+        }
+
+        body {
+            background-color: var(--paper);
+            color: var(--ink-black);
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+            height: 400vh;
+        }
+
+        /* Risograph Grain Filter */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: var(--grain-strength);
+        }
+
+        #p5-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        /* Desktop Layout */
+        .desktop {
+            padding: 40px;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+            position: relative;
+        }
+
+        /* Retro Windows UI Components */
+        .window {
+            background: var(--paper);
+            border: var(--border-width) solid var(--ink-black);
+            box-shadow: 6px 6px 0px var(--ink-black);
+            position: absolute;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            mix-blend-mode: multiply;
+        }
+
+        .window:hover {
+            transform: scale(1.02) rotate(-1deg);
+        }
+
+        .title-bar {
+            background: var(--ink-black);
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--paper);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .ctrl {
+            width: 12px;
+            height: 12px;
+            border: 1px solid var(--paper);
+        }
+
+        .ctrl-close { background: var(--ink-pink); }
+        .ctrl-min { background: var(--ink-yellow); }
+
+        .window-content {
+            padding: 20px;
+            flex-grow: 1;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Specific Window Positioning */
+        #win-intro { width: 350px; left: 10%; top: 100px; z-index: 10; }
+        #win-gallery { width: 450px; right: 8%; top: 600px; z-index: 5; }
+        #win-stats { width: 280px; left: 15%; top: 1200px; z-index: 8; }
+        #win-os { width: 320px; right: 12%; top: 1800px; z-index: 6; }
+        #win-cat-fact { width: 400px; left: 50%; top: 2500px; transform: translateX(-50%); }
+
+        h1 { font-size: 2.5rem; line-height: 1; margin-bottom: 10px; text-transform: uppercase; }
+        p { font-size: 0.9rem; line-height: 1.5; margin-bottom: 15px; }
+
+        .cat-img-placeholder {
+            width: 100%;
+            height: 250px;
+            background: var(--ink-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed var(--ink-black);
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .tag {
+            display: inline-block;
+            background: var(--ink-pink);
+            color: var(--paper);
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .scroll-hint {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            writing-mode: vertical-rl;
+            letter-spacing: 2px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+
+        svg#noise-filter {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <svg id="noise-filter">
+        <filter id="grain">
+            <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" stitchTiles="stitch" />
+            <feColorMatrix type="saturate" values="0" />
+            <feComponentTransfer>
+                <feFuncA type="linear" slope="0.2" />
+            </feComponentTransfer>
+            <feComposite operator="in" in2="SourceGraphic" />
+        </filter>
+    </svg>
+
+    <div class="grain-overlay">
+        <svg width="100%" height="100%">
+            <rect width="100%" height="100%" filter="url(#grain)" fill="transparent" />
+        </svg>
+    </div>
+
+    <div id="p5-canvas"></div>
+
+    <div class="desktop">
+        <!-- Window 1: Intro -->
+        <div class="window" id="win-intro">
+            <div class="title-bar">
+                <span>SYSTEM_HELLO.MEOW</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-min"></div>
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <h1>MEOWDOWS 95</h1>
+                <p>Welcome to a feline-driven operating system. Experimental, grainy, and highly unpredictable.</p>
+                <div class="tag">VER 4.2.0</div>
+                <div class="tag">STABLE_PURR</div>
+            </div>
+        </div>
+
+        <!-- Window 2: Visualizer -->
+        <div class="window" id="win-gallery">
+            <div class="title-bar">
+                <span>C:\USERS\CAT\EYES.EXE</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-min"></div>
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="cat-img-placeholder" id="cat-visual">
+                    <!-- p5 interaction area -->
+                    <span style="font-size: 0.6rem; color: var(--paper);">[ TRACKING_MOTION ]</span>
+                </div>
+                <p>The "risograph" aesthetic blends ink layers digitally, mimicking the texture of physical print while celebrating the chaos of feline movement.</p>
+            </div>
+        </div>
+
+        <!-- Window 3: Stats -->
+        <div class="window" id="win-stats">
+            <div class="title-bar">
+                <span>CPU_LOAD.BAT</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div style="font-size: 0.8rem;">
+                    <p>> NAP_MODE: ACTIVE<br>
+                    > HUNGER: 88%<br>
+                    > ZOOMIES: CALIBRATING...<br>
+                    > CURRENT_TASK: WATCH_FLY</p>
+                </div>
+                <div style="height: 10px; width: 100%; border: 1px solid var(--ink-black);">
+                    <div id="progress-bar" style="height: 100%; width: 30%; background: var(--ink-pink);"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window 4: OS Components -->
+        <div class="window" id="win-os">
+            <div class="title-bar">
+                <span>CORE_DRIVE</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-min"></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <p>Scroll deeper to see the p5.js engine morphing textures and geometric cats.</p>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
+                    <div style="height: 40px; background: var(--ink-yellow);"></div>
+                    <div style="height: 40px; background: var(--ink-blue);"></div>
+                    <div style="height: 40px; background: var(--ink-pink);"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window 5: Final Fact -->
+        <div class="window" id="win-cat-fact">
+            <div class="title-bar">
+                <span>WISDOM.TXT</span>
+                <div class="window-controls">
+                    <div class="ctrl ctrl-close"></div>
+                </div>
+            </div>
+            <div class="window-content" style="text-align: center;">
+                <h2 style="font-size: 1.2rem; margin-bottom: 10px;">DID YOU KNOW?</h2>
+                <p>"A group of cats is called a clowder."</p>
+                <button style="padding: 10px; border: 2px solid var(--ink-black); background: var(--ink-yellow); font-family: 'JetBrains Mono'; font-weight: bold; cursor: pointer;">REFRESH_KNOWLEDGE</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="scroll-hint">SCROLL TO PURR</div>
+
+    <script>
+        let cats = [];
+        let scrollY = 0;
+        let inkColors = [];
+
+        function setup() {
+            let canvas = createCanvas(windowWidth, windowHeight);
+            canvas.parent('p5-canvas');
+            inkColors = [
+                color(255, 107, 107, 180), // Pink
+                color(77, 150, 255, 180),  // Blue
+                color(255, 207, 77, 180)   // Yellow
+            ];
+            
+            for(let i = 0; i < 15; i++) {
+                cats.push(new CatEntity());
+            }
+        }
+
+        function draw() {
+            clear();
+            scrollY = window.scrollY;
+            
+            // Background Yarn effect
+            drawYarn();
+            
+            // Cat Particles
+            cats.forEach(cat => {
+                cat.update();
+                cat.display();
+            });
+
+            // Dynamic Progress Bar logic
+            let scrollPercent = (scrollY / (document.body.scrollHeight - windowHeight)) * 100;
+            document.getElementById('progress-bar').style.width = scrollPercent + '%';
+        }
+
+        function drawYarn() {
+            noFill();
+            stroke(42, 42, 42, 40);
+            strokeWeight(1);
+            beginShape();
+            for(let i = 0; i < 10; i++) {
+                let x = noise(i, scrollY * 0.001) * width;
+                let y = noise(i + 10, scrollY * 0.001) * height;
+                curveVertex(x, y);
+            }
+            endShape();
+        }
+
+        class CatEntity {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = random(width);
+                this.y = random(height);
+                this.size = random(40, 120);
+                this.color = random(inkColors);
+                this.speed = random(0.5, 2);
+                this.rot = random(TWO_PI);
+                this.noiseOffset = random(1000);
+            }
+
+            update() {
+                // React to scroll
+                let scrollForce = scrollY * 0.1;
+                this.yOffset = (noise(this.noiseOffset + frameCount * 0.01) - 0.5) * 100;
+                this.xOffset = (noise(this.noiseOffset + 500 + frameCount * 0.01) - 0.5) * 100;
+                
+                // Float upwards based on scroll
+                this.currentY = (this.y - (scrollY * 0.5)) % (height + 200);
+                if (this.currentY < -100) this.y += height + 200;
+            }
+
+            display() {
+                push();
+                translate(this.x + this.xOffset, this.currentY + this.yOffset);
+                rotate(this.rot + scrollY * 0.002);
+                
+                fill(this.color);
+                noStroke();
+                
+                // Abstract Cat Shape (Risograph Geometry)
+                // Head
+                ellipse(0, 0, this.size, this.size * 0.8);
+                // Ears
+                triangle(-this.size/2, -this.size/4, -this.size/3, -this.size/1.2, -this.size/8, -this.size/3);
+                triangle(this.size/2, -this.size/4, this.size/3, -this.size/1.2, this.size/8, -this.size/3);
+                
+                // Eyes (responding to scroll depth)
+                let eyeOpen = map(sin(frameCount * 0.05), -1, 1, 2, this.size/5);
+                fill(42, 42, 42);
+                ellipse(-this.size/5, 0, 4, eyeOpen);
+                ellipse(this.size/5, 0, 4, eyeOpen);
+                
+                pop();
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+
+        // Parallax Effect for Windows
+        window.addEventListener('scroll', () => {
+            const windows = document.querySelectorAll('.window');
+            windows.forEach((win, index) => {
+                let speed = (index + 1) * 0.15;
+                let yPos = -(window.scrollY * speed);
+                // We keep the initial top but apply a transform
+                win.style.transform = `translateY(${yPos}px) rotate(${window.scrollY * 0.01 * (index % 2 === 0 ? 1 : -1)}deg)`;
+            });
+        });
+    </script>
+</body>
+</html>

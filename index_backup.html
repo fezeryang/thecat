@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园猫咪 | Campus Felines</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;500;700&family=JetBrains+Mono:wght@300;500&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fdfaf6;
+            --accent-1: #ff8e72;
+            --accent-2: #ffccb6;
+            --accent-3: #a8e6cf;
+            --accent-4: #ffd3b6;
+            --accent-5: #d4a5c9;
+            --accent-6: #c7e8ca;
+            --text: #2d3436;
+            --glass: rgba(255, 255, 255, 0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Fredoka', 'Noto Sans SC', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            cursor: crosshair;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.035;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        header {
+            position: fixed;
+            top: 36px;
+            left: 50px;
+            z-index: 200;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 3.2rem;
+            font-weight: 700;
+            line-height: 0.9;
+            letter-spacing: -2px;
+            color: var(--text);
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            margin-top: 8px;
+            opacity: 0.5;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        /* Cat Cards */
+        .cat-card {
+            position: absolute;
+            width: 200px;
+            height: 280px;
+            background: var(--glass);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1.5px solid rgba(255, 255, 255, 0.6);
+            border-radius: 36px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 18px 40px rgba(0,0,0,0.06);
+            transition: box-shadow 0.3s ease;
+            cursor: pointer;
+            z-index: 10;
+            user-select: none;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .cat-card:hover {
+            box-shadow: 0 28px 55px rgba(255, 142, 114, 0.22);
+        }
+
+        .cat-card .img-wrap {
+            width: 100%;
+            height: 150px;
+            border-radius: 22px;
+            overflow: hidden;
+            position: relative;
+            background: #eee;
+        }
+
+        .cat-card .img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: contrast(1.05) saturate(1.1);
+        }
+
+        .cat-card .img-wrap .color-dot {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .cat-info h2 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .cat-info .cat-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            opacity: 0.45;
+            text-transform: uppercase;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            background: white;
+            border-radius: 100px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            margin-top: 8px;
+            color: var(--accent-1);
+            letter-spacing: 0.05em;
+        }
+
+        /* Decorative blobs */
+        .decor-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(70px);
+            z-index: 0;
+            pointer-events: none;
+        }
+        .b1 { width: 450px; height: 450px; background: #ffccb6; top: -120px; right: -80px; opacity: 0.45; }
+        .b2 { width: 320px; height: 320px; background: #a8e6cf; bottom: -60px; left: 8%; opacity: 0.4; }
+        .b3 { width: 250px; height: 250px; background: #d4a5c9; bottom: 10%; right: 15%; opacity: 0.3; }
+
+        /* Family link */
+        .family-btn {
+            position: fixed;
+            bottom: 36px;
+            right: 50px;
+            z-index: 200;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 12px 24px;
+            border: 2px solid var(--text);
+            border-radius: 50px;
+            background: white;
+            color: var(--text);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .family-btn:hover {
+            background: var(--text);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Paw print decorations */
+        .paw-deco {
+            position: fixed;
+            font-size: 1.4rem;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="decor-blob b1"></div>
+    <div class="decor-blob b2"></div>
+    <div class="decor-blob b3"></div>
+
+    <div class="paw-deco" style="top:15%;left:5%;">🐾</div>
+    <div class="paw-deco" style="top:70%;left:2%;">🐾</div>
+    <div class="paw-deco" style="top:40%;right:3%;">🐾</div>
+    <div class="paw-deco" style="bottom:15%;left:40%;">🐾</div>
+
+    <header>
+        <div class="subtitle">// 校园猫咪档案系统 v2.0</div>
+        <h1>CAMPUS<br>FELINES</h1>
+    </header>
+
+    <div id="canvas-container"></div>
+
+    <!-- Cat 0: 小橘 -->
+    <a class="cat-card" id="cat-0" href="cat-xiaoyu.html">
+        <div class="img-wrap">
+            <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=400" alt="小橘">
+            <div class="color-dot" style="background:#ff8e72;"></div>
+        </div>
+        <div class="cat-info">
+            <div class="cat-id">ID: #001</div>
+            <h2>小橘</h2>
+            <div class="badge" style="color:#ff8e72;">图书馆守护者</div>
+        </div>
+    </a>
+
+    <!-- Cat 1: 雪球 -->
+    <a class="cat-card" id="cat-1" href="cat-xueqiu.html">
+        <div class="img-wrap">
+            <img src="https://images.unsplash.com/photo-1573865526739-10659fef70a5?auto=format&fit=crop&q=80&w=400" alt="雪球">
+            <div class="color-dot" style="background:#b8d4f0;"></div>
+        </div>
+        <div class="cat-info">
+            <div class="cat-id">ID: #002</div>
+            <h2>雪球</h2>
+            <div class="badge" style="color:#6aabde;">月光巡逻队</div>
+        </div>
+    </a>
+
+    <!-- Cat 2: 墨墨 -->
+    <a class="cat-card" id="cat-2" href="cat-momo.html">
+        <div class="img-wrap">
+            <img src="https://images.unsplash.com/photo-1533733501057-4f8913732f36?auto=format&fit=crop&q=80&w=400" alt="墨墨">
+            <div class="color-dot" style="background:#bdb2ff;"></div>
+        </div>
+        <div class="cat-info">
+            <div class="cat-id">ID: #003</div>
+            <h2>墨墨</h2>
+            <div class="badge" style="color:#8b7fd4;">棱镜折光师</div>
+        </div>
+    </a>
+
+    <!-- Cat 3: 条纹 -->
+    <a class="cat-card" id="cat-3" href="cat-tiaowen.html">
+        <div class="img-wrap">
+            <img src="https://images.unsplash.com/photo-1495360010541-f48722b34f7d?auto=format&fit=crop&q=80&w=400" alt="条纹">
+            <div class="color-dot" style="background:#a8e6cf;"></div>
+        </div>
+        <div class="cat-info">
+            <div class="cat-id">ID: #004</div>
+            <h2>条纹</h2>
+            <div class="badge" style="color:#5d9e8a;">地形拓扑者</div>
+        </div>
+    </a>
+
+    <!-- Cat 4: 布丁 -->
+    <a class="cat-card" id="cat-4" href="cat-buding.html">
+        <div class="img-wrap">
+            <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=400" alt="布丁">
+            <div class="color-dot" style="background:#ffd3b6;"></div>
+        </div>
+        <div class="cat-info">
+            <div class="cat-id">ID: #005</div>
+            <h2>布丁</h2>
+            <div class="badge" style="color:#e8956d;">系统调试员</div>
+        </div>
+    </a>
+
+    <!-- Cat 5: 花花 -->
+    <a class="cat-card" id="cat-5" href="cat-huahua.html">
+        <div class="img-wrap">
+            <img src="https://images.unsplash.com/photo-1518791841217-8f162f1912da?auto=format&fit=crop&q=80&w=400" alt="花花">
+            <div class="color-dot" style="background:#c7e8ca;"></div>
+        </div>
+        <div class="cat-info">
+            <div class="cat-id">ID: #006</div>
+            <h2>花花</h2>
+            <div class="badge" style="color:#5a9e62;">活版印刷师</div>
+        </div>
+    </a>
+
+    <a class="family-btn" href="family.html">大家庭 →</a>
+
+    <script>
+        /**
+         * PHYSICS-BASED SOFT PENDULUMS (Verlet Integration)
+         * 6 cats hanging from elastic strings
+         */
+        const numCats = 6;
+        const gravity = 0.45;
+        const friction = 0.965;
+        let springs = [];
+
+        function setup() {
+            let canvas = createCanvas(windowWidth, windowHeight);
+            canvas.parent('canvas-container');
+
+            const positions = [
+                { ax: width * 0.12, targetLen: 280 },
+                { ax: width * 0.28, targetLen: 320 },
+                { ax: width * 0.44, targetLen: 260 },
+                { ax: width * 0.60, targetLen: 340 },
+                { ax: width * 0.74, targetLen: 290 },
+                { ax: width * 0.88, targetLen: 310 },
+            ];
+
+            for (let i = 0; i < numCats; i++) {
+                let anchor = { x: positions[i].ax, y: -30 };
+                let bob = {
+                    x: anchor.x + random(-80, 80),
+                    y: height * 0.42 + random(-60, 60),
+                    oldX: anchor.x,
+                    oldY: height * 0.42,
+                    targetLen: positions[i].targetLen,
+                    id: i
+                };
+                springs.push({ anchor, bob });
+            }
+        }
+
+        function draw() {
+            clear();
+
+            const catColors = [
+                [255, 142, 114],
+                [184, 212, 240],
+                [189, 178, 255],
+                [168, 230, 207],
+                [255, 211, 182],
+                [199, 232, 202]
+            ];
+
+            springs.forEach((s, idx) => {
+                let dx = s.bob.x - s.anchor.x;
+                let dy = s.bob.y - s.anchor.y;
+                let distance = sqrt(dx * dx + dy * dy);
+                let difference = s.bob.targetLen - distance;
+                let percent = (difference / distance) * 0.5;
+                let offsetX = dx * percent;
+                let offsetY = dy * percent;
+
+                let vx = (s.bob.x - s.bob.oldX) * friction;
+                let vy = (s.bob.y - s.bob.oldY) * friction;
+
+                s.bob.oldX = s.bob.x;
+                s.bob.oldY = s.bob.y;
+
+                s.bob.x += vx + offsetX;
+                s.bob.y += vy + offsetY + gravity;
+
+                // Mouse repulsion
+                let mDist = dist(mouseX, mouseY, s.bob.x, s.bob.y);
+                if (mDist < 180) {
+                    let angle = atan2(s.bob.y - mouseY, s.bob.x - mouseX);
+                    let push = map(mDist, 0, 180, 2.5, 0);
+                    s.bob.x += cos(angle) * push;
+                    s.bob.y += sin(angle) * push;
+                }
+
+                // Boundary
+                s.bob.x = constrain(s.bob.x, 110, width - 110);
+                s.bob.y = constrain(s.bob.y, 80, height - 160);
+
+                // Draw string with gradient-like effect
+                let c = catColors[idx];
+                for (let t = 0; t <= 1; t += 0.05) {
+                    let sx = lerp(s.anchor.x, s.bob.x, t);
+                    let sy = lerp(s.anchor.y, s.bob.y, t);
+                    let alpha = map(t, 0, 1, 20, 60);
+                    stroke(c[0], c[1], c[2], alpha);
+                    strokeWeight(map(t, 0, 1, 1, 2.5));
+                    if (t > 0) {
+                        let px = lerp(s.anchor.x, s.bob.x, t - 0.05);
+                        let py = lerp(s.anchor.y, s.bob.y, t - 0.05);
+                        line(px, py, sx, sy);
+                    }
+                }
+
+                // Pivot dot
+                noStroke();
+                fill(c[0], c[1], c[2], 200);
+                circle(s.anchor.x, s.anchor.y, 9);
+
+                // Small glow circle at bob
+                fill(c[0], c[1], c[2], 30);
+                circle(s.bob.x, s.bob.y, 220);
+                fill(c[0], c[1], c[2], 15);
+                circle(s.bob.x, s.bob.y, 260);
+
+                // Update DOM card position
+                let card = document.getElementById(`cat-${idx}`);
+                if (card) {
+                    let rotation = (s.bob.x - s.bob.oldX) * 1.8;
+                    rotation = constrain(rotation, -12, 12);
+                    card.style.left = `${s.bob.x - 100}px`;
+                    card.style.top = `${s.bob.y - 30}px`;
+                    card.style.transform = `rotate(${rotation}deg)`;
+                }
+            });
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>

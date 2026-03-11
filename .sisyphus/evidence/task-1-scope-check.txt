@@ -1,0 +1,17 @@
+Task 1 Scope Check
+
+Cross-page coupling risk notes:
+- Shared component: client/src/components/ParticleBackground.tsx
+- Shared data source: client/src/lib/cats.ts
+- Shared utility styles: client/src/index.css (.glass-panel, .data-label, .tag-pill)
+
+Non-Xiaoyu pages that must remain out of redesign scope:
+- client/src/pages/cats/CatXueqiu.tsx
+- client/src/pages/cats/CatMomo.tsx
+- client/src/pages/cats/CatTiaowen.tsx
+- client/src/pages/cats/CatBuding.tsx
+- client/src/pages/cats/CatHuahua.tsx
+
+Conclusion:
+- Xiaoyu redesign can be isolated to CatXiaoyu route/page and new story child page.
+- Route table update in client/src/App.tsx is required and expected.

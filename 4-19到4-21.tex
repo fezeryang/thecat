@@ -1,0 +1,368 @@
+%==================== 命题 4-19 ====================%
+\begin{proposition}[内点解情形下的福利与利润比较]
+在存在内点解的情形下，即
+\[
+s_E^{E*}>0,\qquad s_I^{I*}>0,
+\]
+并由命题4-16知
+\[
+s_E^{D*}=s_E^{E*}>0,\qquad s_I^{D*}=s_I^{I*}>0,
+\]
+则四种模式下政府最优福利与制造商最优利润满足
+\[
+W^{D*}>W^{I*}>W^{N*},\qquad
+W^{D*}>W^{E*}>W^{N*},
+\]
+以及
+\[
+\Pi_i^{D*}>\Pi_i^{I*}>\Pi_i^{N*},\qquad
+\Pi_i^{D*}>\Pi_i^{E*}>\Pi_i^{N*}.
+\]
+其中，\(\Pi_i^{E*}\) 与 \(\Pi_i^{I*}\) 的大小规律取决于参数取值，无法得到统一排序。
+\end{proposition}
+
+\begin{proof}
+先比较政府福利。由命题4-7，传播补贴模式下政府福利为
+\[
+W^{E*}=\max_{s_E\in[0,1)}W^E(s_E).
+\]
+当 \(s_E=0\) 时，传播补贴模式退化为无补贴模式，因此
+\[
+W^E(0)=W^{N*}.
+\]
+又由于此处假定内点解存在，即 \(s_E^{E*}>0\)，故最优解严格优于边界点 \(s_E=0\)，从而
+\[
+W^{E*}>W^E(0)=W^{N*}.
+\]
+
+同理，由命题4-11，投资补贴模式下
+\[
+W^{I*}=\max_{s_I\in[0,1)}W^I(s_I).
+\]
+当 \(s_I=0\) 时，投资补贴模式退化为无补贴模式，因此
+\[
+W^I(0)=W^{N*}.
+\]
+又由于 \(s_I^{I*}>0\)，故内点最优解严格优于边界点 \(s_I=0\)，从而
+\[
+W^{I*}>W^I(0)=W^{N*}.
+\]
+
+再由命题4-15，双重补贴模式下
+\[
+W^{D*}=\max_{(s_I,s_E)\in[0,1)^2}W^D(s_I,s_E).
+\]
+又由于双重补贴问题关于投资补贴与传播补贴具有可分离性，且由命题4-16有
+\[
+s_I^{D*}=s_I^{I*}>0,\qquad s_E^{D*}=s_E^{E*}>0,
+\]
+故双重补贴模式同时在投资补贴维度上实现了相对于无补贴模式的严格改进，并在传播补贴维度上也实现了相对于无补贴模式的严格改进。因此，相较于仅包含投资补贴的 \(I\) 模式和仅包含传播补贴的 \(E\) 模式，双重补贴模式进一步叠加了另一维度的严格正向福利增益，从而有
+\[
+W^{D*}>W^{I*},\qquad W^{D*}>W^{E*}.
+\]
+综上，
+\[
+W^{D*}>W^{I*}>W^{N*},\qquad
+W^{D*}>W^{E*}>W^{N*}.
+\]
+
+下面比较制造商利润。由企业单期利润流函数可知，在任意给定的状态路径与控制路径下，补贴率 \(s_I\) 或 \(s_E\) 的提高会降低企业承担的投资成本或传播成本，因此企业贴现利润关于补贴率单调递增。于是，在内点补贴存在时，
+\[
+\Pi_i^{E*}>\Pi_i^{N*},\qquad
+\Pi_i^{I*}>\Pi_i^{N*}.
+\]
+再由命题4-16，
+\[
+s_I^{D*}=s_I^{I*}>0,\qquad s_E^{D*}=s_E^{E*}>0,
+\]
+故双重补贴模式同时享受投资补贴与传播补贴，相对于任一单补贴模式都额外增加了一项严格为正的成本减免，从而
+\[
+\Pi_i^{D*}>\Pi_i^{I*},\qquad \Pi_i^{D*}>\Pi_i^{E*}.
+\]
+因此
+\[
+\Pi_i^{D*}>\Pi_i^{I*}>\Pi_i^{N*},\qquad
+\Pi_i^{D*}>\Pi_i^{E*}>\Pi_i^{N*}.
+\]
+
+另一方面，传播补贴主要通过提高商誉积累改善收益，投资补贴则主要通过提高 ESG 水平并进一步影响商誉和需求改善收益，因此
+\[
+\Pi_i^{E*}-\Pi_i^{I*}
+\]
+的符号取决于参数配置，无法得到统一排序。命题得证。
+\end{proof}
+
+%==================== 命题 4-21 ====================%
+\begin{proposition}[内点解情形下的参数敏感性比较]
+在存在内点解的情形下，即
+\[
+s_E^{E*}>0,\qquad s_I^{I*}>0,
+\]
+并由命题4-16知
+\[
+s_E^{D*}=s_E^{E*}>0,\qquad s_I^{D*}=s_I^{I*}>0,
+\]
+则四种模式下政府最优福利对环境收益参数 \(\xi\)、商誉社会收益参数 \(\varphi\) 及公共资金影子成本 \(\mu\) 的边际响应满足
+\[
+\frac{\partial W^{D*}}{\partial \xi}
+=
+\frac{\partial W^{I*}}{\partial \xi}
+>
+\frac{\partial W^{N*}}{\partial \xi}
+=
+\frac{\partial W^{E*}}{\partial \xi},
+\]
+\[
+\frac{\partial W^{D*}}{\partial \varphi}
+>
+\frac{\partial W^{E*}}{\partial \varphi}
+>
+\frac{\partial W^{N*}}{\partial \varphi},
+\qquad
+\frac{\partial W^{D*}}{\partial \varphi}
+>
+\frac{\partial W^{I*}}{\partial \varphi}
+>
+\frac{\partial W^{N*}}{\partial \varphi},
+\]
+且
+\[
+\frac{\partial W^{E*}}{\partial \varphi}
+\quad\text{与}\quad
+\frac{\partial W^{I*}}{\partial \varphi}
+\]
+的大小规律取决于参数取值；并且
+\[
+\frac{\partial W^{N*}}{\partial \mu}=0,\qquad
+\frac{\partial W^{D*}}{\partial \mu}
+<
+\frac{\partial W^{E*}}{\partial \mu}<0,\qquad
+\frac{\partial W^{D*}}{\partial \mu}
+<
+\frac{\partial W^{I*}}{\partial \mu}<0.
+\]
+\end{proposition}
+
+\begin{proof}
+由包络定理，对于任一模式 \(M\in\{N,E,I,D\}\)，有
+\[
+\frac{dW^{M*}}{dp}
+=
+\left.\frac{\partial W^M}{\partial p}\right|_{s=s^{M*}},
+\qquad p\in\{\xi,\varphi,\mu\}.
+\]
+再由政府福利函数的一般形式
+\[
+W^M=2\Pi_i^M+2\xi\Psi_x^M+2\varphi\Psi_G^M-\mu\Gamma^M,
+\]
+可得
+\[
+\frac{\partial W^{M*}}{\partial \xi}=2\Psi_x^{M*},\qquad
+\frac{\partial W^{M*}}{\partial \varphi}=2\Psi_G^{M*},\qquad
+\frac{\partial W^{M*}}{\partial \mu}=-\Gamma^{M*},
+\]
+其中 \(\Psi_x^{M*}\) 与 \(\Psi_G^{M*}\) 分别表示模式 \(M\) 下 ESG 水平与商誉水平的贴现累计值，\(\Gamma^{M*}\) 表示模式 \(M\) 下政府补贴支出的贴现成本。
+
+先比较 \(\xi\) 的边际效应。由命题4-18，
+\[
+x_i^{I*}=x_i^{D*}>x_i^{N*}=x_i^{E*}.
+\]
+又由状态变量 \(x_i(t)\) 的显式解
+\[
+x_i^M(t)=x_{i0}e^{-\delta t}+x_i^{M*}(1-e^{-\delta t}),
+\]
+可知对任意 \(t>0\)，有
+\[
+x_i^{I}(t)=x_i^{D}(t)>x_i^{N}(t)=x_i^{E}(t).
+\]
+两边乘以 \(e^{-\rho t}>0\) 并在 \([0,\infty)\) 上积分，得到
+\[
+\Psi_x^{I*}=\Psi_x^{D*}>\Psi_x^{N*}=\Psi_x^{E*}.
+\]
+因此
+\[
+\frac{\partial W^{D*}}{\partial \xi}
+=
+\frac{\partial W^{I*}}{\partial \xi}
+>
+\frac{\partial W^{N*}}{\partial \xi}
+=
+\frac{\partial W^{E*}}{\partial \xi}.
+\]
+
+再比较 \(\varphi\) 的边际效应。由各模式下商誉路径的贴现积分表达式，并结合命题4-16中
+\[
+s_I^{D*}=s_I^{I*},\qquad s_E^{D*}=s_E^{E*},
+\]
+可将四种模式下的 \(\Psi_G^{M*}\) 写为
+\[
+\Psi_G^{N*}=C_0+C_\alpha+C_\beta,
+\]
+\[
+\Psi_G^{E*}=C_0+C_\alpha+\frac{C_\beta}{1-s_E^{E*}},
+\]
+\[
+\Psi_G^{I*}=C_0+C_\beta+\frac{C_\alpha}{1-s_I^{I*}},
+\]
+\[
+\Psi_G^{D*}=C_0+\frac{C_\alpha}{1-s_I^{I*}}+\frac{C_\beta}{1-s_E^{E*}},
+\]
+其中
+\[
+C_0=\frac{G_0}{\rho+\sigma}+\frac{\gamma x_0}{(\rho+\delta)(\rho+\sigma)},
+\]
+\[
+C_\alpha=\frac{\gamma\alpha^2A_0}{\eta\rho(\rho+\delta)(\rho+\sigma)},
+\qquad
+C_\beta=\frac{\beta^2B_0}{\kappa\rho(\rho+\sigma)}.
+\]
+由于在内点解下
+\[
+s_E^{E*}>0,\qquad s_I^{I*}>0,
+\]
+故
+\[
+\frac{1}{1-s_E^{E*}}>1,\qquad \frac{1}{1-s_I^{I*}}>1.
+\]
+于是
+\[
+\Psi_G^{E*}-\Psi_G^{N*}
+=
+C_\beta\left(\frac{1}{1-s_E^{E*}}-1\right)>0,
+\]
+\[
+\Psi_G^{I*}-\Psi_G^{N*}
+=
+C_\alpha\left(\frac{1}{1-s_I^{I*}}-1\right)>0,
+\]
+\[
+\Psi_G^{D*}-\Psi_G^{E*}
+=
+C_\alpha\left(\frac{1}{1-s_I^{I*}}-1\right)>0,
+\]
+\[
+\Psi_G^{D*}-\Psi_G^{I*}
+=
+C_\beta\left(\frac{1}{1-s_E^{E*}}-1\right)>0.
+\]
+因此
+\[
+\Psi_G^{D*}>\Psi_G^{E*}>\Psi_G^{N*},\qquad
+\Psi_G^{D*}>\Psi_G^{I*}>\Psi_G^{N*}.
+\]
+从而
+\[
+\frac{\partial W^{D*}}{\partial \varphi}
+>
+\frac{\partial W^{E*}}{\partial \varphi}
+>
+\frac{\partial W^{N*}}{\partial \varphi},
+\qquad
+\frac{\partial W^{D*}}{\partial \varphi}
+>
+\frac{\partial W^{I*}}{\partial \varphi}
+>
+\frac{\partial W^{N*}}{\partial \varphi}.
+\]
+同时，
+\[
+\Psi_G^{E*}-\Psi_G^{I*}
+=
+C_\beta\left(\frac{1}{1-s_E^{E*}}-1\right)
+-
+C_\alpha\left(\frac{1}{1-s_I^{I*}}-1\right),
+\]
+其符号不确定，因此
+\[
+\frac{\partial W^{E*}}{\partial \varphi}
+\quad\text{与}\quad
+\frac{\partial W^{I*}}{\partial \varphi}
+\]
+不存在统一排序。
+
+最后比较 \(\mu\) 的边际效应。无补贴模式下
+\[
+\Gamma^{N*}=0,
+\]
+故
+\[
+\frac{\partial W^{N*}}{\partial \mu}=0.
+\]
+传播补贴模式下仅存在传播补贴，因此
+\[
+\Gamma^{E*}
+=
+\frac{s_E^{E*}\kappa}{\rho}\bigl(E_i^{E*}\bigr)^2>0,
+\]
+故
+\[
+\frac{\partial W^{E*}}{\partial \mu}=-\Gamma^{E*}<0.
+\]
+投资补贴模式下仅存在投资补贴，因此
+\[
+\Gamma^{I*}
+=
+\frac{s_I^{I*}\eta}{\rho}\bigl(I_i^{I*}\bigr)^2>0,
+\]
+故
+\[
+\frac{\partial W^{I*}}{\partial \mu}=-\Gamma^{I*}<0.
+\]
+
+双重补贴模式下，
+\[
+\Gamma^{D*}
+=
+\frac{s_I^{D*}\eta}{\rho}\bigl(I_i^{D*}\bigr)^2
++
+\frac{s_E^{D*}\kappa}{\rho}\bigl(E_i^{D*}\bigr)^2.
+\]
+再由命题4-16与命题4-17，
+\[
+s_I^{D*}=s_I^{I*},\quad I_i^{D*}=I_i^{I*},
+\qquad
+s_E^{D*}=s_E^{E*},\quad E_i^{D*}=E_i^{E*},
+\]
+从而
+\[
+\Gamma^{D*}=\Gamma^{I*}+\Gamma^{E*}.
+\]
+由于在内点情形下
+\[
+\Gamma^{I*}>0,\qquad \Gamma^{E*}>0,
+\]
+故
+\[
+\Gamma^{D*}>\Gamma^{I*},\qquad \Gamma^{D*}>\Gamma^{E*}.
+\]
+于是
+\[
+\frac{\partial W^{D*}}{\partial \mu}
+=
+-\Gamma^{D*}
+<
+-\Gamma^{E*}
+=
+\frac{\partial W^{E*}}{\partial \mu}<0,
+\]
+\[
+\frac{\partial W^{D*}}{\partial \mu}
+=
+-\Gamma^{D*}
+<
+-\Gamma^{I*}
+=
+\frac{\partial W^{I*}}{\partial \mu}<0.
+\]
+综上可得
+\[
+\frac{\partial W^{N*}}{\partial \mu}=0,\qquad
+\frac{\partial W^{D*}}{\partial \mu}
+<
+\frac{\partial W^{E*}}{\partial \mu}<0,\qquad
+\frac{\partial W^{D*}}{\partial \mu}
+<
+\frac{\partial W^{I*}}{\partial \mu}<0.
+\]
+命题得证。
+\end{proof}

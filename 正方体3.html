@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEO-CELLULOID DREAM</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=Space+Grotesk:wght@300;700&family=Zilla+Slab+Highlight:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #fdf6e3;
+            --accent-pink: #ff4d6d;
+            --accent-blue: #00b4d8;
+            --accent-yellow: #fee440;
+            --text-primary: #2b2d42;
+            --grain-opacity: 0.15;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+            height: 500vh; /* Long scroll for animation */
+        }
+
+        /* Risograph Grain Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            background: url('https://grainy-gradients.vercel.app/noise.svg');
+            opacity: var(--grain-opacity);
+            mix-blend-mode: multiply;
+        }
+
+        #p5-canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        .content-overlay {
+            position: relative;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .section {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 10%;
+        }
+
+        .hero-text {
+            font-family: 'Syne', sans-serif;
+            font-size: 12vw;
+            line-height: 0.8;
+            text-transform: uppercase;
+            color: var(--accent-pink);
+            mix-blend-mode: difference;
+        }
+
+        .data-label {
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 0.2em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .data-label::before {
+            content: "";
+            width: 40px;
+            height: 2px;
+            background: var(--text-primary);
+            margin-right: 15px;
+        }
+
+        .vhs-lines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .side-nav {
+            position: fixed;
+            right: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            mix-blend-mode: overlay;
+        }
+
+        .side-nav div {
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--text-primary);
+            margin: 15px 0;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="vhs-lines"></div>
+
+    <div class="side-nav">
+        <div style="background: var(--text-primary);"></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+
+    <div id="p5-canvas-container"></div>
+
+    <div class="content-overlay">
+        <section class="section">
+            <span class="data-label">CHRONICLE 001 / VOID_CORE</span>
+            <h1 class="hero-text">DIGITAL<br>ECHOES</h1>
+        </section>
+
+        <section class="section" style="align-items: flex-end; text-align: right;">
+            <span class="data-label">DATA STREAM / 042</span>
+            <h1 class="hero-text" style="color: var(--accent-blue);">SENSORY<br>LAYER</h1>
+        </section>
+
+        <section class="section">
+            <span class="data-label">MEME_ARCHIVE / UNRAVEL</span>
+            <h1 class="hero-text" style="color: var(--accent-yellow);">ANALOG<br>HEART</h1>
+        </section>
+
+        <section class="section" style="height: 200vh;">
+            <!-- Buffer for the final animation -->
+        </section>
+    </div>
+
+    <script>
+        let scrollY = 0;
+        let images = [];
+        let font;
+        let cubeSize = 250;
+        let flowField = [];
+
+        // Anime Girl Themed Image Placeholders (High Fidelity Color Palettes)
+        const imgUrls = [
+            'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?auto=format&fit=crop&q=80&w=800',
+            'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&q=80&w=800',
+            'https://images.unsplash.com/photo-1528360983277-13d401cdc186?auto=format&fit=crop&q=80&w=800',
+            'https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?auto=format&fit=crop&q=80&w=800',
+            'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?auto=format&fit=crop&q=80&w=800',
+            'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&q=80&w=800'
+        ];
+
+        function setup() {
+            const canvas = createCanvas(windowWidth, windowHeight, WEBGL);
+            canvas.parent('p5-canvas-container');
+            
+            // Load high-quality placeholders
+            imgUrls.forEach((url, i) => {
+                images[i] = loadImage(url);
+            });
+
+            rectMode(CENTER);
+            
+            // Flow field for background text particles
+            for(let i=0; i<50; i++) {
+                flowField.push({
+                    x: random(-width, width),
+                    y: random(-height, height),
+                    txt: random(['夢', '光', '電子', '少女', '記憶', 'VOID', 'CYBER']),
+                    size: random(20, 80),
+                    speed: random(1, 3)
+                });
+            }
+        }
+
+        function draw() {
+            scrollY = window.scrollY;
+            let maxScroll = document.body.scrollHeight - windowHeight;
+            let scrollFactor = constrain(scrollY / maxScroll, 0, 1);
+            
+            // Dynamic Background
+            background(253, 246, 227); // Pastel Cream
+            
+            // Artistic Text Animation in Background
+            push();
+            translate(0, 0, -500);
+            drawKineticTypography(scrollFactor);
+            pop();
+
+            // Lighting for depth
+            ambientLight(200);
+            pointLight(255, 255, 255, 200, -200, 300);
+
+            if (scrollFactor < 0.7) {
+                // PHASE 1: 3D ROTATING CUBE
+                drawRotatingCube(scrollFactor);
+            } else if (scrollFactor < 0.85) {
+                // PHASE 2: UNFOLDING TO FILMSTRIP
+                let unfoldFactor = map(scrollFactor, 0.7, 0.85, 0, 1);
+                drawUnfoldingCube(unfoldFactor);
+            } else {
+                // PHASE 3: VHS FILMSTRIP PLAYBACK
+                let playFactor = map(scrollFactor, 0.85, 1, 0, 1);
+                drawVHSPlayback(playFactor);
+            }
+        }
+
+        function drawKineticTypography(f) {
+            noStroke();
+            flowField.forEach((p, i) => {
+                fill(255, 77, 109, 40);
+                textSize(p.size);
+                text(p.txt, p.x, p.y + (f * 500));
+                p.y -= p.speed;
+                if(p.y < -height) p.y = height;
+            });
+        }
+
+        function drawRotatingCube(f) {
+            push();
+            rotateX(f * TWO_PI * 2);
+            rotateY(f * TWO_PI * 1.5);
+            rotateZ(f * PI);
+            
+            // Scale based on scroll
+            let s = map(f, 0, 0.7, 1, 1.2);
+            scale(s);
+
+            drawBoxFaces(cubeSize, 1);
+            pop();
+        }
+
+        function drawUnfoldingCube(f) {
+            push();
+            rotateX(PI * 0.1); // Slight tilt for perspective
+            
+            let gap = f * cubeSize * 1.1;
+            
+            // Transition cube faces into a horizontal line
+            for (let i = 0; i < 6; i++) {
+                push();
+                let xPos = (i - 2.5) * (cubeSize + 20) * f;
+                let zPos = lerp(0, 0, f);
+                translate(xPos, 0, 0);
+                rotateY(lerp(i * PI/2, 0, f));
+                
+                texture(images[i % images.length]);
+                rect(0, 0, cubeSize, cubeSize);
+                pop();
+            }
+            pop();
+        }
+
+        function drawVHSPlayback(f) {
+            push();
+            let stripWidth = width * 1.5;
+            let xOffset = -f * stripWidth * 0.5;
+            
+            translate(xOffset, 0, 0);
+
+            for (let i = -10; i < 10; i++) {
+                push();
+                translate(i * (cubeSize + 10), 0, 0);
+                
+                // Add "Analog" jitter
+                let jitterX = random(-1, 1) * f;
+                let jitterY = random(-1, 1) * f;
+                translate(jitterX, jitterY);
+
+                // Film Frame border
+                noFill();
+                stroke(43, 45, 66, 100);
+                strokeWeight(10);
+                rect(0, 0, cubeSize + 10, cubeSize + 40);
+
+                // Image
+                texture(images[Math.abs(i) % images.length]);
+                rect(0, 0, cubeSize, cubeSize);
+
+                // Film Perforations
+                fill(43, 45, 66);
+                noStroke();
+                rect(-cubeSize/2 - 5, -cubeSize/2 - 10, 10, 15);
+                rect(cubeSize/2 + 5, -cubeSize/2 - 10, 10, 15);
+                rect(-cubeSize/2 - 5, cubeSize/2 + 10, 10, 15);
+                rect(cubeSize/2 + 5, cubeSize/2 + 10, 10, 15);
+                pop();
+            }
+
+            // Playback Overlay (Chromatic Aberration)
+            drawGlitchOverlay(f);
+            pop();
+        }
+
+        function drawGlitchOverlay(f) {
+            if (random(1) > 0.9) {
+                push();
+                fill(255, 0, 0, 50);
+                rect(random(-width, width), random(-height, height), width, 2);
+                fill(0, 255, 255, 50);
+                rect(random(-width, width), random(-height, height), width, 5);
+                pop();
+            }
+        }
+
+        function drawBoxFaces(s, alpha) {
+            // Manual Box drawing for individual face texturing
+            let h = s / 2;
+
+            // Front
+            push(); translate(0, 0, h); texture(images[0]); rect(0, 0, s, s); pop();
+            // Back
+            push(); translate(0, 0, -h); rotateY(PI); texture(images[1]); rect(0, 0, s, s); pop();
+            // Right
+            push(); translate(h, 0, 0); rotateY(HALF_PI); texture(images[2]); rect(0, 0, s, s); pop();
+            // Left
+            push(); translate(-h, 0, 0); rotateY(-HALF_PI); texture(images[3]); rect(0, 0, s, s); pop();
+            // Top
+            push(); translate(0, -h, 0); rotateX(HALF_PI); texture(images[4]); rect(0, 0, s, s); pop();
+            // Bottom
+            push(); translate(0, h, 0); rotateX(-HALF_PI); texture(images[5]); rect(0, 0, s, s); pop();
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>
